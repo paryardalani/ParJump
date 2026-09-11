@@ -17,5 +17,10 @@ jobs:
           password: ${{ secrets.DEPLOY_PASSWORD }}
           port: ${{ secrets.DEPLOY_PORT }}
           script: |
-            cd ${{ secrets.DEPLOY_PATH }}
-            git pull origin main
+            if [ -d "${{ secrets.DEPLOY_PATH }}/.git" ]; then
+              cd ${{ secrets.DEPLOY_PATH }}
+              git pull origin main
+            else
+              mkdir -p ${{ secrets.DEPLOY_PATH }}
+              git clone https://github.com/paryardalani/ParJump.git ${{ secrets.DEPLOY_PATH }}
+            fi
