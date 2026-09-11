@@ -640,22 +640,27 @@
   var JUMP_V = -300;
 
   var COL = {
-    sky1: "#5b8bf0", sky2: "#dbe6ff",
-    farHill: "#7e6bc4",
-    midHill: "#7d8296",
-    nearHill: "#5fae6c",
+    sky2: "#dbe6ff",
+    midHill: "#6fcf6f",
+    nearHill: "#4fae55",
     grass: "#8fe38f", grassDark: "#5fae6c",
-    dirt: "#4a3f66", dirtDark: "#352a52",
+    dirt: "#7a5a3a", dirtDark: "#5c4128",
     trim: "#ee3b30",
-    stone: "#9aa0b8", stoneDark: "#6b7191", moss: "#8fe38f",
-    body: "#5f6fe6", belt: "#ee3b30", cap: "#7d8296", capStripe: "#ee3b30",
-    boot: "#3b3768", trimGreen: "#8fe38f", skin: "#ffd9a0", eye: "#1c1832",
-    enemyBody: "#5c5480", enemyBelly: "#443f72"
+    brick: "#c8763f", brickDark: "#8a4c26", brickLine: "#7a3f1f",
+    body: "#3a63d8", belt: "#f0b94e", cap: "#e0392c", capBrim: "#a82a20",
+    boot: "#5c3a1e", trimGreen: "#e0392c", skin: "#ffd9a0", eye: "#1c1832",
+    hair: "#171310",
+    enemyBody: "#8a5a2b", enemyBelly: "#f0e0c0"
   };
 
   var STOMP_BOUNCE = -230;
   var HIT_INVULN = 1.1;
   var FLAG_X = 4000;
+
+  var bgImg = new Image();
+  var bgReady = false;
+  bgImg.onload = function(){ bgReady = true; };
+  bgImg.src = "assets/parjump-bg.jpg";
 
   var canvasEl = canvas;
   var hero, cameraX, mushroomCount, defeatedCount, platforms, mushrooms, enemies, particles;
@@ -942,28 +947,20 @@
     }
   }
 
-  function drawSky(){
-    var g = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
-    g.addColorStop(0, COL.sky1);
-    g.addColorStop(1, COL.sky2);
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, GROUND_Y);
-  }
-
-  function puff(x, y, r){
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.arc(x + r * 0.9, y + 4, r * 0.75, 0, Math.PI * 2);
-    ctx.arc(x - r * 0.9, y + 5, r * 0.6, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  function drawClouds(){
-    ctx.fillStyle = "rgba(255,255,255,0.85)";
-    var ph = mod(cameraX * 0.08, 260);
-    for (var cx = -ph; cx < W + 120; cx += 260){
-      puff(cx + 60, 38, 16);
-      puff(cx + 190, 55, 12);
+  function drawBackground(){
+    if (!bgReady){
+      ctx.fillStyle = COL.sky2;
+      ctx.fillRect(0, 0, W, GROUND_Y);
+      return;
+    }
+    var factor = 0.16;
+    var drawH = GROUND_Y;
+    var drawW = drawH * (bgImg.naturalWidth / bgImg.naturalHeight);
+    var scrollX = mod(cameraX * factor, drawW);
+    var x = -scrollX;
+    while (x < W){
+      ctx.drawImage(bgImg, x, 0, drawW, drawH);
+      x += drawW;
     }
   }
 
@@ -975,12 +972,14 @@
     ctx.fill();
   }
 
-  function drawHillLayer(color, radius, spacing, factor){
+  function drawHillLayer(color, radius, spacing, factor, alpha){
+    ctx.globalAlpha = alpha == null ? 1 : alpha;
     ctx.fillStyle = color;
     var ph = mod(cameraX * factor, spacing);
     for (var cx = -ph - radius; cx < W + radius * 2; cx += spacing){
       hillBump(cx, GROUND_Y, radius);
     }
+    ctx.globalAlpha = 1;
   }
 
   function drawGround(){
@@ -1015,7 +1014,7 @@
     var topY = GROUND_Y - poleH;
     var wave = Math.sin(t * 4) * 3;
 
-    ctx.fillStyle = COL.stoneDark;
+    ctx.fillStyle = "#8a8a8a";
     ctx.fillRect(sx - 1, topY, 3, poleH);
 
     ctx.fillStyle = "#ffe08a";
@@ -1041,12 +1040,20 @@
   function drawPlatform(p){
     var sx = p.worldX - cameraX;
     if (sx + p.w < -20 || sx > W + 20) return;
-    ctx.fillStyle = COL.stone;
+    ctx.fillStyle = COL.brick;
     ctx.fillRect(sx, p.y, p.w, 10);
-    ctx.fillStyle = COL.stoneDark;
+    ctx.fillStyle = COL.brickDark;
     ctx.fillRect(sx, p.y + 7, p.w, 3);
-    ctx.fillStyle = COL.moss;
-    ctx.fillRect(sx, p.y, p.w, 3);
+    ctx.strokeStyle = COL.brickLine;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(sx, p.y + 5); ctx.lineTo(sx + p.w, p.y + 5); ctx.stroke();
+    var brickW = 12, phase = mod(p.worldX, brickW * 2);
+    for (var bx = -phase; bx < p.w; bx += brickW){
+      ctx.beginPath(); ctx.moveTo(sx + bx, p.y); ctx.lineTo(sx + bx, p.y + 5); ctx.stroke();
+    }
+    for (var bx2 = -phase - brickW / 2; bx2 < p.w; bx2 += brickW){
+      ctx.beginPath(); ctx.moveTo(sx + bx2, p.y + 5); ctx.lineTo(sx + bx2, p.y + 10); ctx.stroke();
+    }
   }
 
   function drawMushroom(m){
@@ -1096,7 +1103,7 @@
     ctx.beginPath(); ctx.arc(sx + 5, y + 7.5, 1.2, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(sx + w - 5, y + 7.5, 1.2, 0, Math.PI * 2); ctx.fill();
 
-    ctx.strokeStyle = COL.trim;
+    ctx.strokeStyle = "#5c3a1e";
     ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(sx + 2, y + 3); ctx.lineTo(sx + 7, y + 5); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(sx + w - 2, y + 3); ctx.lineTo(sx + w - 7, y + 5); ctx.stroke();
@@ -1144,6 +1151,11 @@
     ctx.fillRect(x + 3, legY - Math.max(0, legSwing), 5, 6);
     ctx.fillRect(x + w - 8, legY - Math.max(0, -legSwing), 5, 6);
 
+    ctx.fillStyle = COL.hair;
+    ctx.beginPath(); ctx.arc(x + w / 2, y + 5, 9, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(x + 2, y + 4, 4, 8);
+    ctx.fillRect(x + w - 6, y + 4, 4, 8);
+
     ctx.fillStyle = COL.body;
     ctx.fillRect(x + 2, y + 12, w - 4, h - 18);
 
@@ -1151,15 +1163,16 @@
     ctx.fillRect(x + 2, y + 12, w - 4, 2);
 
     ctx.fillStyle = COL.belt;
-    ctx.fillRect(x + w / 2 - 3, y + 17, 6, 6);
+    ctx.beginPath(); ctx.arc(x + w / 2 - 3, y + 19, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + w / 2 + 3, y + 19, 1.6, 0, Math.PI * 2); ctx.fill();
 
     ctx.fillStyle = COL.skin;
     ctx.fillRect(x + 3, y, w - 6, 13);
 
     ctx.fillStyle = COL.cap;
     ctx.fillRect(x + 1, y - 2, w - 2, 5);
-    ctx.fillStyle = COL.capStripe;
-    ctx.fillRect(x + 1, y + 1, w - 2, 1.5);
+    ctx.fillStyle = COL.capBrim;
+    ctx.fillRect(x + w - 3, y + 1, 4, 2);
 
     ctx.fillStyle = COL.eye;
     if (blink){
@@ -1202,11 +1215,9 @@
 
   function render(){
     ctx.clearRect(0, 0, W, H);
-    drawSky();
-    drawClouds();
-    drawHillLayer(COL.farHill, 100, 260, 0.15);
-    drawHillLayer(COL.midHill, 70, 190, 0.35);
-    drawHillLayer(COL.nearHill, 50, 130, 0.6);
+    drawBackground();
+    drawHillLayer(COL.midHill, 70, 190, 0.35, 0.55);
+    drawHillLayer(COL.nearHill, 50, 130, 0.6, 0.85);
     drawGround();
     drawFlag();
     for (var i = 0; i < platforms.length; i++) drawPlatform(platforms[i]);
