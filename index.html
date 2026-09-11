@@ -1,0 +1,1106 @@
+<title>Jump Foundry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --bg:#14122a;
+    --panel:#201d44;
+    --panel-2:#282454;
+    --line:#3b3768;
+    --ink:#f3f1ff;
+    --ink-dim:#a8a2cf;
+    --red:#ee3b30;
+    --red-ink:#3a0805;
+    --green:#8fe38f;
+    --green-ink:#0e3517;
+    --blue:#5b8bf0;
+    --purple:#8a6fe0;
+    --gray:#7d8296;
+  }
+
+  *{box-sizing:border-box;}
+
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    padding:32px 16px 48px;
+    display:flex;
+    justify-content:center;
+  }
+
+  .wrap{
+    width:100%;
+    max-width:1100px;
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+  }
+
+  header.page-head{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+
+  .kicker{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:12px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--green);
+  }
+
+  h1{
+    margin:0;
+    font-family:"Press Start 2P", monospace;
+    font-size:clamp(20px, 3.4vw, 30px);
+    line-height:1.4;
+    text-wrap:balance;
+    text-shadow:3px 3px 0 var(--bg), 0 0 26px rgba(238,59,48,.35);
+  }
+
+  .lede{
+    margin:0;
+    max-width:64ch;
+    color:var(--ink-dim);
+    font-size:15px;
+    line-height:1.6;
+  }
+
+  .cabinet{
+    display:grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(260px, 340px);
+    gap:20px;
+    align-items:start;
+  }
+
+  @media (max-width: 860px){
+    .cabinet{ grid-template-columns: 1fr; }
+  }
+
+  /* ---- arcade stage ---- */
+
+  .stage-frame{
+    background:linear-gradient(180deg, #2a2558, #191540);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:14px;
+    box-shadow: 0 20px 50px -20px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,.03);
+  }
+
+  .marquee{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:10px 14px;
+    margin-bottom:12px;
+    background:linear-gradient(180deg, #362e6c, #251f4c);
+    border:1px solid var(--line);
+    border-radius:10px;
+  }
+
+  .marquee-title{
+    font-family:"Press Start 2P", monospace;
+    font-size:11px;
+    letter-spacing:.06em;
+    color:var(--red);
+  }
+
+  .marquee-lights{
+    display:flex;
+    gap:6px;
+  }
+  .marquee-lights span{
+    width:6px; height:6px; border-radius:50%;
+    background:var(--green);
+    box-shadow:0 0 6px 1px var(--green);
+  }
+  .marquee-lights span:nth-child(2){ background:var(--red); box-shadow:0 0 6px 1px var(--red); }
+
+  .screen{
+    position:relative;
+    width:100%;
+    aspect-ratio: 5 / 3;
+    border-radius:8px;
+    overflow:hidden;
+    background:#000;
+    border:6px solid #100d28;
+  }
+
+  canvas{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    image-rendering:pixelated;
+    display:block;
+    outline:none;
+  }
+  canvas:focus{
+    outline:3px solid var(--red);
+    outline-offset:-3px;
+  }
+
+  .scanlines{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    background:repeating-linear-gradient(
+      180deg,
+      rgba(0,0,0,.14) 0px,
+      rgba(0,0,0,.14) 1px,
+      rgba(0,0,0,0) 2px,
+      rgba(0,0,0,0) 3px
+    );
+    mix-blend-mode:multiply;
+  }
+
+  .play-hint{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:0 20px;
+    background:rgba(10,8,26,.5);
+    font-family:"Press Start 2P", monospace;
+    font-size:clamp(9px, 2.2vw, 12px);
+    letter-spacing:.04em;
+    color:var(--ink);
+    pointer-events:none;
+    transition:opacity .2s ease;
+  }
+  .play-hint.hidden{ opacity:0; }
+
+  .win-banner{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:16px;
+    background:rgba(10,8,26,.72);
+  }
+  .win-banner[hidden]{ display:none; }
+  .win-card{
+    background:var(--panel);
+    border:2px solid var(--red);
+    border-radius:10px;
+    padding:20px 24px;
+    text-align:center;
+    max-width:280px;
+  }
+  .win-card h2{
+    margin:0 0 14px;
+    font-family:"Press Start 2P", monospace;
+    font-size:15px;
+    letter-spacing:.02em;
+    color:var(--red);
+    text-shadow:2px 2px 0 rgba(0,0,0,.4);
+  }
+  .win-stats{
+    display:flex;
+    justify-content:center;
+    gap:16px;
+    margin-bottom:18px;
+  }
+  .win-stats > div{ display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .win-stats span{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:16px;
+    font-weight:600;
+    color:var(--ink);
+    font-variant-numeric:tabular-nums;
+  }
+  .win-stats small{
+    font-size:9px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+  }
+  #playAgainBtn{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:12px;
+    letter-spacing:.03em;
+    color:var(--red-ink);
+    background:var(--red);
+    border:none;
+    border-radius:6px;
+    padding:9px 20px;
+    cursor:pointer;
+    font-weight:600;
+  }
+  #playAgainBtn:hover{ filter:brightness(1.08); }
+  #playAgainBtn:focus-visible{ outline:2px solid var(--ink); outline-offset:2px; }
+
+  .stage-foot{
+    margin-top:10px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+
+  .chip{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:11px;
+    color:var(--ink-dim);
+    background:var(--panel);
+    border:1px solid var(--line);
+    padding:5px 9px;
+    border-radius:999px;
+  }
+
+  /* ---- sidebar / HUD panels ---- */
+
+  .side{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+
+  .panel{
+    position:relative;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-top:2px solid var(--red);
+    padding:16px 18px 18px;
+  }
+
+  .panel::before, .panel::after{
+    content:"";
+    position:absolute;
+    top:-1px;
+    width:8px; height:8px;
+    border-top:2px solid var(--red);
+  }
+  .panel::before{ left:-1px; border-left:2px solid var(--red); }
+  .panel::after{ right:-1px; border-right:2px solid var(--red); }
+
+  .panel h2{
+    margin:0 0 4px;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:12px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--green);
+  }
+
+  .panel h3{
+    margin:0 0 10px;
+    font-size:19px;
+    font-weight:600;
+  }
+
+  .panel p{
+    margin:0 0 10px;
+    font-size:14px;
+    line-height:1.65;
+    color:var(--ink-dim);
+  }
+  .panel p:last-child{ margin-bottom:0; }
+
+  .keys{
+    display:flex;
+    flex-direction:column;
+    gap:9px;
+    margin-top:2px;
+  }
+  .keys .row{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    font-size:13px;
+    color:var(--ink-dim);
+    flex-wrap:wrap;
+  }
+  kbd{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:11px;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-bottom:2px solid var(--line);
+    border-radius:4px;
+    padding:3px 7px;
+    color:var(--ink);
+  }
+  .keys .hint{
+    margin-top:2px;
+    font-size:12.5px;
+    color:var(--ink-dim);
+  }
+
+  .engine-notes{
+    list-style:none;
+    margin:0;
+    padding:0;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .engine-notes li{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:12.5px;
+    line-height:1.5;
+    color:var(--ink-dim);
+    padding-left:14px;
+    position:relative;
+  }
+  .engine-notes li::before{
+    content:"›";
+    position:absolute;
+    left:0;
+    color:var(--red);
+  }
+  .engine-notes b{ color:var(--ink); font-weight:600; }
+
+  .roadmap{
+    list-style:none;
+    margin:0;
+    padding:0;
+    display:flex;
+    flex-direction:column;
+  }
+
+  .roadmap li{
+    display:flex;
+    gap:10px;
+    padding:9px 0;
+    border-bottom:1px solid var(--line);
+    align-items:flex-start;
+  }
+  .roadmap li:last-child{ border-bottom:none; }
+
+  .roadmap .n{
+    flex:none;
+    width:22px; height:22px;
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:11px;
+    font-weight:600;
+    border:1px solid var(--line);
+    color:var(--ink-dim);
+  }
+
+  .roadmap li.done .n{
+    background:var(--green);
+    color:var(--green-ink);
+    border-color:var(--green);
+  }
+  .roadmap li.done .t{ color:var(--ink); }
+  .roadmap li.done .status{ color:var(--green); }
+
+  .roadmap .t{
+    font-size:13.5px;
+    color:var(--ink-dim);
+    padding-top:2px;
+  }
+
+  .status{
+    display:block;
+    margin-top:2px;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:10.5px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+
+  footer{
+    text-align:center;
+    font-size:12px;
+    color:var(--ink-dim);
+    padding-top:6px;
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="page-head">
+    <span class="kicker">Auto-runner · vanilla HTML5 canvas</span>
+    <h1>JUMP FOUNDRY</h1>
+    <p class="lede">Your hero now runs to the right on its own — the world scrolls beneath its feet. Time your jumps over stone platforms, grab mushrooms to grow, stomp the grumps roaming the path from above, and reach the flag at the end to clear the level.</p>
+  </header>
+
+  <div class="cabinet">
+
+    <div class="stage-frame">
+      <div class="marquee">
+        <span class="marquee-title">JUMP FOUNDRY</span>
+        <span class="marquee-lights"><span></span><span></span><span></span></span>
+      </div>
+
+      <div class="screen">
+        <canvas id="game" width="400" height="240" tabindex="0"></canvas>
+        <div class="scanlines"></div>
+        <div class="play-hint" id="playHint">▶ CLICK TO CONTROL</div>
+        <div class="win-banner" id="winBanner" hidden>
+          <div class="win-card">
+            <h2>LEVEL CLEAR</h2>
+            <div class="win-stats">
+              <div><span id="finalDist">0M</span><small>distance</small></div>
+              <div><span id="finalMush">0</span><small>mushrooms</small></div>
+              <div><span id="finalKO">0</span><small>stomps</small></div>
+            </div>
+            <button id="playAgainBtn" type="button">Play Again</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="stage-foot">
+        <span class="chip">400 × 240 logical px</span>
+        <span class="chip">Step 7 of 7 — Reach the Flag</span>
+      </div>
+    </div>
+
+    <div class="side">
+
+      <div class="panel">
+        <h2>Step 7 / 7</h2>
+        <h3>Reach the Flag</h3>
+        <p>The level now has an end: a flagpole waiting down the road. New obstacles stop generating as you get close, so you get a clear final stretch. Touch the flag and the run stops, your stats pop up, and you can jump straight back in.</p>
+      </div>
+
+      <div class="panel">
+        <h2>Controls</h2>
+        <div class="keys">
+          <div class="row"><kbd>Space</kbd><span>or</span><kbd>↑</kbd><span>— jump</span></div>
+          <div class="row"><kbd>→</kbd><span>or</span><kbd>D</kbd><span>— sprint faster</span></div>
+          <div class="row"><kbd>←</kbd><span>or</span><kbd>A</kbd><span>— ease off the pace</span></div>
+        </div>
+        <p class="hint">The run starts on its own. Click the stage once so it can hear your jumps.</p>
+      </div>
+
+      <div class="panel">
+        <h2>Engine notes</h2>
+        <ul class="engine-notes">
+          <li><b>Camera:</b> the hero's screen position never moves — a scrolling <code>cameraX</code> slides the world past it instead</li>
+          <li><b>Parallax:</b> far mountains, mid hills, and near hills scroll at different speeds for depth</li>
+          <li><b>Spawning:</b> platforms, mushrooms, and grumps generate just ahead of the camera and are cleared once they scroll off-screen</li>
+          <li><b>Stomp check:</b> landing on a grump from above defeats it; touching it any other way costs your growth and a moment of invincibility</li>
+          <li><b>Win state:</b> reaching the flag freezes the world, plays a short celebration, then shows your run's stats — no page reload needed to try again</li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h2>Build roadmap</h2>
+        <ol class="roadmap">
+          <li class="done"><span class="n">✓</span><span class="t">The Stage — the world and the render loop<span class="status">✓ done</span></span></li>
+          <li class="done"><span class="n">✓</span><span class="t">On Your Feet — walking and jumping<span class="status">✓ done</span></span></li>
+          <li class="done"><span class="n">✓</span><span class="t">Hang Time — gravity and jump physics<span class="status">✓ done</span></span></li>
+          <li class="done"><span class="n">✓</span><span class="t">Solid Ground — auto-run, platforms &amp; mushrooms<span class="status">✓ done</span></span></li>
+          <li class="done"><span class="n">✓</span><span class="t">Trouble Ahead — a patrolling enemy<span class="status">✓ done</span></span></li>
+          <li class="done"><span class="n">✓</span><span class="t">The Stomp — taking hits, defeating enemies<span class="status">✓ done</span></span></li>
+          <li class="done"><span class="n">✓</span><span class="t">Reach the Flag — a goal and a win state<span class="status">✓ done</span></span></li>
+        </ol>
+      </div>
+
+      <div class="panel">
+        <h2>Beyond the tutorial</h2>
+        <p>The roadmap is complete — this is a full, replayable mini-platformer. If you want to keep going, some natural next additions: a lives/health system, a second level with a harder layout, sound effects, or swapping the hand-drawn shapes for real sprite art.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>No sprites, no game engine — just the 2D canvas API and hand-drawn shapes.</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var canvas = document.getElementById("game");
+  var ctx = canvas.getContext("2d");
+  var W = canvas.width;   // 400 — logical drawing width
+  var H = canvas.height;  // 240 — logical drawing height
+
+  var GROUND_Y = 200;
+  var GRASS_H = 8;
+  var HERO_X = 90;        // hero's fixed screen position — the world moves, not the hero
+  var HERO_W = 20, HERO_H = 30;
+
+  var BASE_SPEED = 90;    // default auto-run speed, px/s
+  var SPRINT_SPEED = 150; // holding right/D
+  var EASE_SPEED = 40;    // holding left/A — still forward, just slower
+  var SPEED_RAMP = 260;   // how fast run speed changes toward its target, px/s^2
+
+  var GRAVITY = 560;
+  var JUMP_V = -300;
+
+  var COL = {
+    sky1: "#5b8bf0", sky2: "#dbe6ff",
+    farHill: "#7e6bc4",
+    midHill: "#7d8296",
+    nearHill: "#5fae6c",
+    grass: "#8fe38f", grassDark: "#5fae6c",
+    dirt: "#4a3f66", dirtDark: "#352a52",
+    trim: "#ee3b30",
+    stone: "#9aa0b8", stoneDark: "#6b7191", moss: "#8fe38f",
+    body: "#5f6fe6", belt: "#ee3b30", cap: "#7d8296", capStripe: "#ee3b30",
+    boot: "#3b3768", trimGreen: "#8fe38f", skin: "#ffd9a0", eye: "#1c1832",
+    enemyBody: "#5c5480", enemyBelly: "#443f72"
+  };
+
+  var STOMP_BOUNCE = -230;
+  var HIT_INVULN = 1.1;
+  var FLAG_X = 4000;
+
+  var canvasEl = canvas;
+  var hero, cameraX, mushroomCount, defeatedCount, platforms, mushrooms, enemies, particles;
+  var nextSpawnX, keys, jumpPrev, runSpeed, heroScaleCur, squash, wasOnGround;
+  var gameWon, winTimer;
+  var t = 0, lastTime = null;
+
+  var hint = document.getElementById("playHint");
+  var winBanner = document.getElementById("winBanner");
+  var playAgainBtn = document.getElementById("playAgainBtn");
+
+  playAgainBtn.addEventListener("click", function(){
+    resetState({});
+    canvas.focus();
+  });
+
+  canvas.addEventListener("keydown", function(e){
+    var k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    keys[k] = true;
+    if ([" ", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].indexOf(e.key) !== -1){
+      e.preventDefault();
+    }
+  });
+  canvas.addEventListener("keyup", function(e){
+    var k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    keys[k] = false;
+  });
+  canvas.addEventListener("click", function(){ canvas.focus(); });
+  canvas.addEventListener("focus", function(){ hint.classList.add("hidden"); });
+  canvas.addEventListener("blur", function(){ hint.classList.remove("hidden"); });
+  try { canvas.focus(); } catch(err){ /* click handler covers hosts that block auto-focus */ }
+
+  function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+  function mod(a, n){ return ((a % n) + n) % n; }
+
+  function spawnParticles(x, y, color){
+    for (var i = 0; i < 8; i++){
+      var ang = (Math.PI * 2 * i) / 8;
+      particles.push({
+        x: x, y: y,
+        vx: Math.cos(ang) * (40 + Math.random() * 30),
+        vy: Math.sin(ang) * (40 + Math.random() * 30) - 20,
+        life: 0.4, color: color
+      });
+    }
+  }
+
+  function makeEnemy(minX, maxX, y){
+    return {
+      worldX: minX, minX: minX, maxX: Math.max(minX + 14, maxX), y: y,
+      dir: 1, speed: 26 + Math.random() * 14, walkPhase: Math.random() * 10, dead: false
+    };
+  }
+
+  function maybeSpawn(){
+    while (nextSpawnX < cameraX + W + 200 && nextSpawnX < FLAG_X - 90){
+      var choice = Math.random();
+      if (choice < 0.42){
+        var py = GROUND_Y - (35 + Math.random() * 40);
+        var pw = 46 + Math.random() * 34;
+        platforms.push({ worldX: nextSpawnX, y: py, w: pw });
+        var onTop = Math.random();
+        if (onTop < 0.35){
+          mushrooms.push({ worldX: nextSpawnX + pw / 2 - 8, y: py - 15, eaten: false, variant: Math.random() < 0.5 ? 0 : 1 });
+        } else if (onTop < 0.62 && pw > 55){
+          enemies.push(makeEnemy(nextSpawnX + 6, nextSpawnX + pw - 22, py - 14));
+        }
+      } else if (choice < 0.62) {
+        mushrooms.push({ worldX: nextSpawnX + 20, y: GROUND_Y - 15, eaten: false, variant: Math.random() < 0.5 ? 0 : 1 });
+      } else if (choice < 0.85) {
+        enemies.push(makeEnemy(nextSpawnX, nextSpawnX + 55, GROUND_Y - 14));
+      }
+      nextSpawnX += 150 + Math.random() * 90;
+    }
+  }
+
+  function update(dt){
+    var right = !!(keys["ArrowRight"] || keys["d"]);
+    var left = !!(keys["ArrowLeft"] || keys["a"]);
+    var jumpNow = !!(keys[" "] || keys["ArrowUp"] || keys["w"]);
+
+    var target = BASE_SPEED;
+    if (right) target = SPRINT_SPEED;
+    else if (left) target = EASE_SPEED;
+
+    if (runSpeed < target) runSpeed = Math.min(target, runSpeed + SPEED_RAMP * dt);
+    else if (runSpeed > target) runSpeed = Math.max(target, runSpeed - SPEED_RAMP * dt);
+
+    if (!gameWon) cameraX += runSpeed * dt;
+
+    if (jumpNow && !jumpPrev && hero.onGround){
+      hero.vy = JUMP_V;
+      hero.onGround = false;
+    }
+    jumpPrev = jumpNow;
+
+    hero.vy += GRAVITY * dt;
+    var prevBottom = hero.y + HERO_H;
+    hero.y += hero.vy * dt;
+    var newBottom = hero.y + HERO_H;
+
+    var landed = false;
+    if (hero.vy >= 0){
+      for (var i = 0; i < platforms.length; i++){
+        var p = platforms[i];
+        var sx = p.worldX - cameraX;
+        if (sx < HERO_X + HERO_W && sx + p.w > HERO_X){
+          if (prevBottom <= p.y + 1 && newBottom >= p.y){
+            hero.y = p.y - HERO_H;
+            hero.vy = 0;
+            landed = true;
+            break;
+          }
+        }
+      }
+    }
+    if (!landed){
+      if (newBottom >= GROUND_Y){
+        hero.y = GROUND_Y - HERO_H;
+        hero.vy = 0;
+        landed = true;
+      }
+    }
+    hero.onGround = landed;
+
+    if (!wasOnGround && hero.onGround) squash = 1;
+    wasOnGround = hero.onGround;
+    squash = Math.max(0, squash - dt * 5);
+
+    if (hero.onGround && runSpeed > 8){
+      hero.walkPhase += dt * (6 + runSpeed * 0.05);
+    }
+
+    var targetScale = hero.big ? 1.35 : 1;
+    heroScaleCur += (targetScale - heroScaleCur) * Math.min(1, dt * 8);
+
+    if (gameWon){
+      winTimer -= dt;
+      if (winTimer <= 0 && winBanner.hidden) showWinBanner();
+      for (var pi2 = particles.length - 1; pi2 >= 0; pi2--){
+        var pt2 = particles[pi2];
+        pt2.x += pt2.vx * dt; pt2.y += pt2.vy * dt; pt2.vy += 90 * dt; pt2.life -= dt;
+        if (pt2.life <= 0) particles.splice(pi2, 1);
+      }
+      return;
+    }
+
+    maybeSpawn();
+
+    if (hero.invuln > 0) hero.invuln = Math.max(0, hero.invuln - dt);
+
+    for (var ei = 0; ei < enemies.length; ei++){
+      var en = enemies[ei];
+      if (en.dead) continue;
+
+      en.worldX += en.dir * en.speed * dt;
+      if (en.worldX <= en.minX){ en.worldX = en.minX; en.dir = 1; }
+      else if (en.worldX >= en.maxX){ en.worldX = en.maxX; en.dir = -1; }
+      en.walkPhase += dt * 6;
+
+      var esx = en.worldX - cameraX;
+      var eTop = en.y, eBottom = en.y + 14;
+      var overlapX = (esx + 16 > HERO_X) && (esx < HERO_X + HERO_W);
+      var overlapY = (hero.y + HERO_H > eTop) && (hero.y < eBottom);
+      if (overlapX && overlapY){
+        var stomp = hero.vy >= 0 && prevBottom <= eTop + 5;
+        if (stomp){
+          en.dead = true;
+          defeatedCount++;
+          hero.vy = STOMP_BOUNCE;
+          hero.onGround = false;
+          hero.y = eTop - HERO_H;
+          spawnParticles(esx + 8, eTop + 6, COL.enemyBody);
+        } else if (hero.invuln <= 0){
+          if (hero.big){ hero.big = false; }
+          hero.invuln = HIT_INVULN;
+          spawnParticles(HERO_X + HERO_W / 2, hero.y + HERO_H / 2, COL.trim);
+        }
+      }
+    }
+
+    for (var m = 0; m < mushrooms.length; m++){
+      var mu = mushrooms[m];
+      if (mu.eaten) continue;
+      var msx = mu.worldX - cameraX;
+      if (msx + 16 > HERO_X && msx < HERO_X + HERO_W &&
+          mu.y + 14 > hero.y && mu.y < hero.y + HERO_H){
+        mu.eaten = true;
+        mushroomCount++;
+        if (!hero.big) hero.big = true;
+        spawnParticles(msx + 8, mu.y + 6, mu.variant === 0 ? COL.trim : COL.grass);
+      }
+    }
+
+    platforms = platforms.filter(function(p){ return p.worldX + p.w > cameraX - 60; });
+    mushrooms = mushrooms.filter(function(mu){ return mu.worldX > cameraX - 60; });
+    enemies = enemies.filter(function(en){ return !en.dead && en.maxX + 20 > cameraX - 60; });
+
+    var flagScreenX = FLAG_X - cameraX;
+    if (flagScreenX <= HERO_X + 6){
+      gameWon = true;
+      winTimer = 1.0;
+      hero.vy = -180;
+      hero.onGround = false;
+      spawnParticles(HERO_X + HERO_W / 2, hero.y + HERO_H / 2, COL.trim);
+      spawnParticles(HERO_X + HERO_W / 2, hero.y + HERO_H / 2, COL.grass);
+    }
+
+    for (var pi = particles.length - 1; pi >= 0; pi--){
+      var pt = particles[pi];
+      pt.x += pt.vx * dt;
+      pt.y += pt.vy * dt;
+      pt.vy += 90 * dt;
+      pt.life -= dt;
+      if (pt.life <= 0) particles.splice(pi, 1);
+    }
+  }
+
+  function drawSky(){
+    var g = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+    g.addColorStop(0, COL.sky1);
+    g.addColorStop(1, COL.sky2);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, GROUND_Y);
+  }
+
+  function puff(x, y, r){
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.arc(x + r * 0.9, y + 4, r * 0.75, 0, Math.PI * 2);
+    ctx.arc(x - r * 0.9, y + 5, r * 0.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawClouds(){
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    var ph = mod(cameraX * 0.08, 260);
+    for (var cx = -ph; cx < W + 120; cx += 260){
+      puff(cx + 60, 38, 16);
+      puff(cx + 190, 55, 12);
+    }
+  }
+
+  function hillBump(cx, baseY, r){
+    ctx.beginPath();
+    ctx.moveTo(cx - r, baseY);
+    ctx.arc(cx, baseY, r, Math.PI, 0);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawHillLayer(color, radius, spacing, factor){
+    ctx.fillStyle = color;
+    var ph = mod(cameraX * factor, spacing);
+    for (var cx = -ph - radius; cx < W + radius * 2; cx += spacing){
+      hillBump(cx, GROUND_Y, radius);
+    }
+  }
+
+  function drawGround(){
+    var phaseG = mod(cameraX, 16);
+    ctx.fillStyle = COL.grass;
+    ctx.fillRect(0, GROUND_Y, W, GRASS_H);
+    ctx.fillStyle = COL.grassDark;
+    for (var gx = -phaseG; gx < W; gx += 16){
+      ctx.fillRect(gx, GROUND_Y + GRASS_H - 3, 8, 3);
+    }
+    ctx.fillStyle = COL.trim;
+    ctx.fillRect(0, GROUND_Y + GRASS_H - 1, W, 1.5);
+
+    ctx.fillStyle = COL.dirt;
+    ctx.fillRect(0, GROUND_Y + GRASS_H, W, H - (GROUND_Y + GRASS_H));
+    ctx.fillStyle = COL.dirtDark;
+    var phaseD = mod(cameraX, 20);
+    var rowH = 10, colW = 20, row = 0;
+    for (var y = GROUND_Y + GRASS_H; y < H; y += rowH){
+      var offset = (row % 2 === 0) ? 0 : colW / 2;
+      for (var x = -colW + offset - phaseD; x < W; x += colW){
+        ctx.fillRect(x, y, colW - 3, 1.5);
+      }
+      row++;
+    }
+  }
+
+  function drawFlag(){
+    var sx = FLAG_X - cameraX;
+    if (sx < -40 || sx > W + 40) return;
+    var poleH = 70;
+    var topY = GROUND_Y - poleH;
+    var wave = Math.sin(t * 4) * 3;
+
+    ctx.fillStyle = COL.stoneDark;
+    ctx.fillRect(sx - 1, topY, 3, poleH);
+
+    ctx.fillStyle = "#ffe08a";
+    ctx.beginPath(); ctx.arc(sx + 0.5, topY - 4, 3, 0, Math.PI * 2); ctx.fill();
+
+    ctx.fillStyle = COL.trim;
+    ctx.beginPath();
+    ctx.moveTo(sx + 2, topY + 3);
+    ctx.lineTo(sx + 22 + wave, topY + 9);
+    ctx.lineTo(sx + 2, topY + 17);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = COL.grass;
+    ctx.beginPath();
+    ctx.moveTo(sx + 2, topY + 6.5);
+    ctx.lineTo(sx + 14 + wave * 0.6, topY + 9.5);
+    ctx.lineTo(sx + 2, topY + 12.5);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawPlatform(p){
+    var sx = p.worldX - cameraX;
+    if (sx + p.w < -20 || sx > W + 20) return;
+    ctx.fillStyle = COL.stone;
+    ctx.fillRect(sx, p.y, p.w, 10);
+    ctx.fillStyle = COL.stoneDark;
+    ctx.fillRect(sx, p.y + 7, p.w, 3);
+    ctx.fillStyle = COL.moss;
+    ctx.fillRect(sx, p.y, p.w, 3);
+  }
+
+  function drawMushroom(m){
+    if (m.eaten) return;
+    var sx = m.worldX - cameraX;
+    if (sx < -20 || sx > W + 20) return;
+    var capColor = m.variant === 0 ? COL.trim : COL.grass;
+    ctx.fillStyle = "#efe8d2";
+    ctx.fillRect(sx + 5, m.y + 7, 6, 7);
+    ctx.fillStyle = capColor;
+    ctx.beginPath();
+    ctx.arc(sx + 8, m.y + 6, 8, Math.PI, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#fff8ea";
+    ctx.beginPath(); ctx.arc(sx + 4, m.y + 3, 1.4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(sx + 11, m.y + 2.5, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(sx + 8, m.y + 5, 1.3, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function drawEnemy(en){
+    if (en.dead) return;
+    var sx = en.worldX - cameraX;
+    if (sx < -20 || sx > W + 20) return;
+    var waddle = Math.sin(en.walkPhase) * 2;
+    var w = 16, h = 14, y = en.y;
+
+    ctx.fillStyle = COL.boot;
+    ctx.fillRect(sx + 2, y + h - 3 - Math.max(0, waddle), 5, 3);
+    ctx.fillRect(sx + w - 7, y + h - 3 - Math.max(0, -waddle), 5, 3);
+
+    ctx.fillStyle = COL.enemyBody;
+    ctx.beginPath();
+    ctx.moveTo(sx, y + h - 4);
+    ctx.arc(sx + w / 2, y + 7, w / 2, Math.PI, 0);
+    ctx.lineTo(sx + w, y + h - 4);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = COL.enemyBelly;
+    ctx.fillRect(sx + 4, y + 8, w - 8, h - 10);
+
+    ctx.fillStyle = "#fff8ea";
+    ctx.beginPath(); ctx.arc(sx + 5, y + 7, 2.4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(sx + w - 5, y + 7, 2.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = COL.eye;
+    ctx.beginPath(); ctx.arc(sx + 5, y + 7.5, 1.2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(sx + w - 5, y + 7.5, 1.2, 0, Math.PI * 2); ctx.fill();
+
+    ctx.strokeStyle = COL.trim;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(sx + 2, y + 3); ctx.lineTo(sx + 7, y + 5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sx + w - 2, y + 3); ctx.lineTo(sx + w - 7, y + 5); ctx.stroke();
+  }
+
+  function drawParticles(){
+    for (var i = 0; i < particles.length; i++){
+      var p = particles[i];
+      ctx.globalAlpha = Math.max(0, p.life / 0.4);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x - 1.5, p.y - 1.5, 3, 3);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawHero(){
+    var idle = hero.onGround && runSpeed < 10;
+    var bob = idle ? Math.sin(t * 2.2) * 1.5 : 0;
+    var blink = (Math.sin(t * 0.6) > 0.985);
+    var legSwing = hero.onGround ? Math.sin(hero.walkPhase) * 4 : 0;
+
+    var x = HERO_X, w = HERO_W, h = HERO_H;
+    var y = hero.y + bob;
+    var feetY = hero.y + h;
+
+    ctx.save();
+    if (hero.invuln > 0 && Math.floor(t * 14) % 2 === 0){
+      ctx.globalAlpha = 0.35;
+    }
+    ctx.translate(x + w / 2, feetY);
+    var sx = heroScaleCur * (1 + squash * 0.14);
+    var sy = heroScaleCur * (1 - squash * 0.22);
+    ctx.scale(sx, sy);
+    var tilt = hero.onGround ? Math.min(0.12, runSpeed / 1400) : 0;
+    ctx.rotate(tilt);
+    ctx.translate(-(x + w / 2), -feetY);
+
+    ctx.fillStyle = "rgba(10,8,26,0.28)";
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2, GROUND_Y + 3, w * 0.5, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = COL.boot;
+    var legY = y + h - 6;
+    ctx.fillRect(x + 3, legY - Math.max(0, legSwing), 5, 6);
+    ctx.fillRect(x + w - 8, legY - Math.max(0, -legSwing), 5, 6);
+
+    ctx.fillStyle = COL.body;
+    ctx.fillRect(x + 2, y + 12, w - 4, h - 18);
+
+    ctx.fillStyle = COL.trimGreen;
+    ctx.fillRect(x + 2, y + 12, w - 4, 2);
+
+    ctx.fillStyle = COL.belt;
+    ctx.fillRect(x + w / 2 - 3, y + 17, 6, 6);
+
+    ctx.fillStyle = COL.skin;
+    ctx.fillRect(x + 3, y, w - 6, 13);
+
+    ctx.fillStyle = COL.cap;
+    ctx.fillRect(x + 1, y - 2, w - 2, 5);
+    ctx.fillStyle = COL.capStripe;
+    ctx.fillRect(x + 1, y + 1, w - 2, 1.5);
+
+    ctx.fillStyle = COL.eye;
+    if (blink){
+      ctx.fillRect(x + w - 8, y + 7, 4, 1.5);
+    } else {
+      ctx.fillRect(x + w - 8, y + 5, 3, 3);
+    }
+
+    ctx.restore();
+  }
+
+  function drawHUD(){
+    ctx.save();
+    ctx.textBaseline = "top";
+    ctx.font = "9px 'Press Start 2P', monospace";
+    ctx.fillStyle = "rgba(15,12,36,0.55)";
+    ctx.fillRect(8, 8, 128, 55);
+
+    ctx.fillStyle = COL.sky2;
+    ctx.fillText("DIST " + Math.floor(cameraX / 10) + "M", 15, 14);
+
+    ctx.fillStyle = "#efe8d2";
+    ctx.fillRect(16, 29, 4, 5);
+    ctx.fillStyle = COL.trim;
+    ctx.beginPath(); ctx.arc(18, 28, 5, Math.PI, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = COL.sky2;
+    ctx.fillText("x " + mushroomCount, 30, 27);
+
+    ctx.fillStyle = COL.enemyBody;
+    ctx.fillRect(15, 43, 8, 6);
+    ctx.strokeStyle = COL.trim;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(14, 41); ctx.lineTo(24, 49); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(24, 41); ctx.lineTo(14, 49); ctx.stroke();
+    ctx.fillStyle = COL.sky2;
+    ctx.fillText("x " + defeatedCount, 30, 43);
+
+    ctx.restore();
+  }
+
+  function render(){
+    ctx.clearRect(0, 0, W, H);
+    drawSky();
+    drawClouds();
+    drawHillLayer(COL.farHill, 100, 260, 0.15);
+    drawHillLayer(COL.midHill, 70, 190, 0.35);
+    drawHillLayer(COL.nearHill, 50, 130, 0.6);
+    drawGround();
+    drawFlag();
+    for (var i = 0; i < platforms.length; i++) drawPlatform(platforms[i]);
+    for (var j = 0; j < mushrooms.length; j++) drawMushroom(mushrooms[j]);
+    for (var k = 0; k < enemies.length; k++) drawEnemy(enemies[k]);
+    drawHero();
+    drawParticles();
+    drawHUD();
+  }
+
+  function frame(now){
+    if (lastTime === null) lastTime = now;
+    var dt = Math.min(0.05, (now - lastTime) / 1000);
+    lastTime = now;
+    t += dt;
+    update(dt);
+    render();
+    requestAnimationFrame(frame);
+  }
+
+  function showWinBanner(){
+    document.getElementById("finalDist").textContent = Math.floor(cameraX / 10) + "M";
+    document.getElementById("finalMush").textContent = String(mushroomCount);
+    document.getElementById("finalKO").textContent = String(defeatedCount);
+    winBanner.hidden = false;
+  }
+
+  function resetState(data){
+    data = data || {};
+    cameraX = data.cameraX || 0;
+    mushroomCount = data.mushroomCount || 0;
+    defeatedCount = data.defeatedCount || 0;
+    hero = {
+      y: typeof data.heroY === "number" ? data.heroY : GROUND_Y - HERO_H,
+      vy: 0, onGround: true, big: !!data.big, walkPhase: 0, invuln: 0
+    };
+    platforms = [];
+    mushrooms = [];
+    enemies = [];
+    particles = [];
+    nextSpawnX = cameraX + 260;
+    keys = {};
+    jumpPrev = false;
+    runSpeed = 0;
+    heroScaleCur = hero.big ? 1.35 : 1;
+    squash = 0;
+    wasOnGround = true;
+    gameWon = false;
+    winTimer = 0;
+    winBanner.hidden = true;
+    t = 0;
+    lastTime = null;
+  }
+
+  function start(data){
+    resetState(data);
+    requestAnimationFrame(frame);
+  }
+
+  if (window.claude && window.claude.hot && window.claude.hot.snapshot){
+    window.claude.hot.snapshot(function(){
+      return { cameraX: cameraX, mushroomCount: mushroomCount, defeatedCount: defeatedCount, big: hero.big, heroY: hero.y };
+    });
+  }
+
+  if (window.claude && window.claude.hot && window.claude.hot.ready){
+    window.claude.hot.ready(start);
+  } else {
+    start((window.claude && window.claude.hot && window.claude.hot.data) || {});
+  }
+})();
+</script>
