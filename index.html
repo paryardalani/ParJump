@@ -50,7 +50,6 @@
     inset:0;
     width:100%;
     height:100%;
-    image-rendering:pixelated;
     display:block;
     outline:none;
   }
@@ -59,19 +58,7 @@
     outline-offset:-3px;
   }
 
-  .scanlines{
-    position:absolute;
-    inset:0;
-    pointer-events:none;
-    background:repeating-linear-gradient(
-      180deg,
-      rgba(0,0,0,.14) 0px,
-      rgba(0,0,0,.14) 1px,
-      rgba(0,0,0,0) 2px,
-      rgba(0,0,0,0) 3px
-    );
-    mix-blend-mode:multiply;
-  }
+  .scanlines{ display:none; }
 
   .play-hint{
     position:absolute;
@@ -305,6 +292,16 @@
   var W = canvas.width;   // 400 — logical drawing width
   var H = canvas.height;  // 240 — logical drawing height
 
+  // Render at a higher backing resolution than the logical 400x240 grid so
+  // shapes and the parallax art stay smooth/anti-aliased instead of blocky
+  // when the canvas is scaled up by CSS to fill its container.
+  var RENDER_SCALE = 3;
+  canvas.width = W * RENDER_SCALE;
+  canvas.height = H * RENDER_SCALE;
+  ctx.scale(RENDER_SCALE, RENDER_SCALE);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+
   var GROUND_Y = 200;
   var GRASS_H = 8;
   var HERO_X = 90;        // hero's fixed screen position — the world moves, not the hero
@@ -509,6 +506,16 @@
 
   function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
   function mod(a, n){ return ((a % n) + n) % n; }
+
+  function rr(x, y, w, h, r){
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
 
   function spawnParticles(x, y, color){
     for (var i = 0; i < 8; i++){
@@ -789,23 +796,23 @@
     ctx.fillStyle = COL.grass;
     ctx.fillRect(0, GROUND_Y, W, GRASS_H);
     ctx.fillStyle = COL.grassDark;
+    ctx.globalAlpha = 0.5;
     for (var gx = -phaseG; gx < W; gx += 16){
-      ctx.fillRect(gx, GROUND_Y + GRASS_H - 3, 8, 3);
+      rr(gx, GROUND_Y + GRASS_H - 3, 8, 3, 1.5); ctx.fill();
     }
-    ctx.fillStyle = COL.trim;
-    ctx.fillRect(0, GROUND_Y + GRASS_H - 1, W, 1.5);
+    ctx.globalAlpha = 1;
 
-    ctx.fillStyle = COL.dirt;
+    var dirtG = ctx.createLinearGradient(0, GROUND_Y + GRASS_H, 0, H);
+    dirtG.addColorStop(0, COL.dirt);
+    dirtG.addColorStop(1, COL.dirtDark);
+    ctx.fillStyle = dirtG;
     ctx.fillRect(0, GROUND_Y + GRASS_H, W, H - (GROUND_Y + GRASS_H));
-    ctx.fillStyle = COL.dirtDark;
-    var phaseD = mod(cameraX, 20);
-    var rowH = 10, colW = 20, row = 0;
-    for (var y = GROUND_Y + GRASS_H; y < H; y += rowH){
-      var offset = (row % 2 === 0) ? 0 : colW / 2;
-      for (var x = -colW + offset - phaseD; x < W; x += colW){
-        ctx.fillRect(x, y, colW - 3, 1.5);
-      }
-      row++;
+
+    ctx.strokeStyle = "rgba(0,0,0,0.12)";
+    ctx.lineWidth = 1;
+    var phaseD = mod(cameraX * 0.5, 30);
+    for (var y2 = GROUND_Y + GRASS_H + 8; y2 < H; y2 += 9){
+      ctx.beginPath(); ctx.moveTo(-phaseD, y2); ctx.lineTo(W - phaseD + 30, y2); ctx.stroke();
     }
   }
 
@@ -842,20 +849,31 @@
   function drawPlatform(p){
     var sx = p.worldX - cameraX;
     if (sx + p.w < -20 || sx > W + 20) return;
-    ctx.fillStyle = COL.brick;
-    ctx.fillRect(sx, p.y, p.w, 10);
-    ctx.fillStyle = COL.brickDark;
-    ctx.fillRect(sx, p.y + 7, p.w, 3);
+
+    ctx.fillStyle = "rgba(10,8,26,0.18)";
+    rr(sx + 1, p.y + 2, p.w, 10, 4); ctx.fill();
+
+    var g = ctx.createLinearGradient(0, p.y, 0, p.y + 10);
+    g.addColorStop(0, COL.brick);
+    g.addColorStop(1, COL.brickDark);
+    ctx.fillStyle = g;
+    rr(sx, p.y, p.w, 10, 4); ctx.fill();
+
     ctx.strokeStyle = COL.brickLine;
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(sx, p.y + 5); ctx.lineTo(sx + p.w, p.y + 5); ctx.stroke();
-    var brickW = 12, phase = mod(p.worldX, brickW * 2);
+    ctx.lineWidth = 0.6;
+    ctx.globalAlpha = 0.4;
+    var brickW = 14, phase = mod(p.worldX, brickW * 2);
+    ctx.beginPath(); ctx.moveTo(sx + 2, p.y + 5); ctx.lineTo(sx + p.w - 2, p.y + 5); ctx.stroke();
     for (var bx = -phase; bx < p.w; bx += brickW){
-      ctx.beginPath(); ctx.moveTo(sx + bx, p.y); ctx.lineTo(sx + bx, p.y + 5); ctx.stroke();
+      if (bx > 1 && bx < p.w - 1){ ctx.beginPath(); ctx.moveTo(sx + bx, p.y + 1); ctx.lineTo(sx + bx, p.y + 5); ctx.stroke(); }
     }
     for (var bx2 = -phase - brickW / 2; bx2 < p.w; bx2 += brickW){
-      ctx.beginPath(); ctx.moveTo(sx + bx2, p.y + 5); ctx.lineTo(sx + bx2, p.y + 10); ctx.stroke();
+      if (bx2 > 1 && bx2 < p.w - 1){ ctx.beginPath(); ctx.moveTo(sx + bx2, p.y + 5); ctx.lineTo(sx + bx2, p.y + 9); ctx.stroke(); }
     }
+    ctx.globalAlpha = 1;
+
+    ctx.fillStyle = "rgba(255,255,255,0.25)";
+    rr(sx + 1, p.y + 1, p.w - 2, 2, 1); ctx.fill();
   }
 
   function drawMushroom(m){
@@ -864,8 +882,16 @@
     if (sx < -20 || sx > W + 20) return;
     var capColor = m.variant === 0 ? COL.trim : COL.grass;
     ctx.fillStyle = "#efe8d2";
-    ctx.fillRect(sx + 5, m.y + 7, 6, 7);
+    rr(sx + 5, m.y + 7, 6, 7, 2); ctx.fill();
+    var capG = ctx.createLinearGradient(0, m.y - 2, 0, m.y + 6);
+    capG.addColorStop(0, capColor);
+    capG.addColorStop(1, "rgba(0,0,0,0.12)");
     ctx.fillStyle = capColor;
+    ctx.beginPath();
+    ctx.arc(sx + 8, m.y + 6, 8, Math.PI, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = capG;
     ctx.beginPath();
     ctx.arc(sx + 8, m.y + 6, 8, Math.PI, 0);
     ctx.closePath();
@@ -900,10 +926,13 @@
     var w = 16, h = 14, y = en.y;
 
     ctx.fillStyle = COL.boot;
-    ctx.fillRect(sx + 2, y + h - 3 - Math.max(0, waddle), 5, 3);
-    ctx.fillRect(sx + w - 7, y + h - 3 - Math.max(0, -waddle), 5, 3);
+    rr(sx + 2, y + h - 3 - Math.max(0, waddle), 5, 3, 1.5); ctx.fill();
+    rr(sx + w - 7, y + h - 3 - Math.max(0, -waddle), 5, 3, 1.5); ctx.fill();
 
-    ctx.fillStyle = COL.enemyBody;
+    var enemyG = ctx.createLinearGradient(0, y, 0, y + h - 4);
+    enemyG.addColorStop(0, "#a06f38");
+    enemyG.addColorStop(1, COL.enemyBody);
+    ctx.fillStyle = enemyG;
     ctx.beginPath();
     ctx.moveTo(sx, y + h - 4);
     ctx.arc(sx + w / 2, y + 7, w / 2, Math.PI, 0);
@@ -912,7 +941,7 @@
     ctx.fill();
 
     ctx.fillStyle = COL.enemyBelly;
-    ctx.fillRect(sx + 4, y + 8, w - 8, h - 10);
+    rr(sx + 4, y + 8, w - 8, h - 10, 2.5); ctx.fill();
 
     ctx.fillStyle = "#fff8ea";
     ctx.beginPath(); ctx.arc(sx + 5, y + 7, 2.4, 0, Math.PI * 2); ctx.fill();
@@ -966,31 +995,37 @@
 
     ctx.fillStyle = COL.boot;
     var legY = y + h - 6;
-    ctx.fillRect(x + 3, legY - Math.max(0, legSwing), 5, 6);
-    ctx.fillRect(x + w - 8, legY - Math.max(0, -legSwing), 5, 6);
+    rr(x + 3, legY - Math.max(0, legSwing), 5, 6, 2); ctx.fill();
+    rr(x + w - 8, legY - Math.max(0, -legSwing), 5, 6, 2); ctx.fill();
 
     ctx.fillStyle = COL.hair;
     ctx.beginPath(); ctx.arc(x + w / 2, y + 5, 9, 0, Math.PI * 2); ctx.fill();
-    ctx.fillRect(x + 2, y + 4, 4, 8);
-    ctx.fillRect(x + w - 6, y + 4, 4, 8);
+    rr(x + 2, y + 4, 4, 8, 2); ctx.fill();
+    rr(x + w - 6, y + 4, 4, 8, 2); ctx.fill();
 
-    ctx.fillStyle = COL.body;
-    ctx.fillRect(x + 2, y + 12, w - 4, h - 18);
+    var bodyG = ctx.createLinearGradient(x, y + 12, x, y + h - 6);
+    bodyG.addColorStop(0, "#5b82ee");
+    bodyG.addColorStop(1, COL.body);
+    ctx.fillStyle = bodyG;
+    rr(x + 2, y + 12, w - 4, h - 18, 3); ctx.fill();
 
     ctx.fillStyle = COL.trimGreen;
-    ctx.fillRect(x + 2, y + 12, w - 4, 2);
+    rr(x + 2, y + 12, w - 4, 2, 1); ctx.fill();
 
     ctx.fillStyle = COL.belt;
     ctx.beginPath(); ctx.arc(x + w / 2 - 3, y + 19, 1.6, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(x + w / 2 + 3, y + 19, 1.6, 0, Math.PI * 2); ctx.fill();
 
-    ctx.fillStyle = COL.skin;
-    ctx.fillRect(x + 3, y, w - 6, 13);
+    var skinG = ctx.createLinearGradient(x, y, x, y + 13);
+    skinG.addColorStop(0, "#ffe4bb");
+    skinG.addColorStop(1, COL.skin);
+    ctx.fillStyle = skinG;
+    rr(x + 3, y, w - 6, 13, 4); ctx.fill();
 
     ctx.fillStyle = COL.cap;
-    ctx.fillRect(x + 1, y - 2, w - 2, 5);
+    rr(x + 1, y - 2, w - 2, 5, 2.5); ctx.fill();
     ctx.fillStyle = COL.capBrim;
-    ctx.fillRect(x + w - 3, y + 1, 4, 2);
+    rr(x + w - 3, y + 1, 4, 2, 1); ctx.fill();
 
     ctx.fillStyle = COL.eye;
     if (blink){
@@ -1017,34 +1052,34 @@
   function drawHUD(){
     ctx.save();
     ctx.textBaseline = "top";
-    ctx.font = "9px 'Press Start 2P', monospace";
-    ctx.fillStyle = "rgba(15,12,36,0.55)";
-    ctx.fillRect(8, 8, 176, 58);
+    ctx.font = "600 11px 'IBM Plex Mono', monospace";
+    ctx.fillStyle = "rgba(15,12,36,0.5)";
+    rr(8, 8, 176, 58, 8); ctx.fill();
 
-    ctx.fillStyle = COL.sky2;
+    ctx.fillStyle = "#fff";
     ctx.fillText("DIST " + Math.floor(cameraX / 10) + "M", 15, 14);
 
     ctx.fillStyle = "#efe8d2";
-    ctx.fillRect(16, 29, 4, 5);
+    rr(16, 29, 4, 5, 1.5); ctx.fill();
     ctx.fillStyle = COL.trim;
     ctx.beginPath(); ctx.arc(18, 28, 5, Math.PI, 0); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = COL.sky2;
+    ctx.fillStyle = "#fff";
     ctx.fillText("x " + mushroomCount, 30, 27);
 
     ctx.fillStyle = COL.goldDark;
     ctx.beginPath(); ctx.ellipse(103, 30, 3.5, 5, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = COL.gold;
     ctx.beginPath(); ctx.ellipse(103, 29, 2.4, 3.6, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = COL.sky2;
+    ctx.fillStyle = "#fff";
     ctx.fillText("x " + coinCount, 112, 27);
 
     ctx.fillStyle = COL.enemyBody;
-    ctx.fillRect(15, 43, 8, 6);
+    rr(15, 43, 8, 6, 2); ctx.fill();
     ctx.strokeStyle = COL.trim;
     ctx.lineWidth = 1.4;
     ctx.beginPath(); ctx.moveTo(14, 41); ctx.lineTo(24, 49); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(24, 41); ctx.lineTo(14, 49); ctx.stroke();
-    ctx.fillStyle = COL.sky2;
+    ctx.fillStyle = "#fff";
     ctx.fillText("x " + defeatedCount, 30, 43);
 
     var heartCount = Math.min(hero.lives, 5);
@@ -1052,7 +1087,7 @@
       drawHeartIcon(97 + hI * 11, 45);
     }
     if (hero.lives > 5){
-      ctx.fillStyle = COL.sky2;
+      ctx.fillStyle = "#fff";
       ctx.fillText("+" + (hero.lives - 5), 97 + 5 * 11, 43);
     }
 
