@@ -1,4 +1,4 @@
-<title>Jump Foundry</title>
+<title>ParJump</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -16,6 +16,7 @@
     --blue:#5b8bf0;
     --purple:#8a6fe0;
     --gray:#7d8296;
+    --gold:#f0b94e;
   }
 
   *{box-sizing:border-box;}
@@ -221,20 +222,112 @@
     text-transform:uppercase;
     color:var(--ink-dim);
   }
-  #playAgainBtn{
+  .win-new-best{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:10.5px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--gold);
+    margin:0 0 14px;
+    height:12px;
+  }
+
+  .win-actions{
+    display:flex;
+    gap:8px;
+    justify-content:center;
+    flex-wrap:wrap;
+  }
+
+  #playAgainBtn, #toTitleBtn{
     font-family:"IBM Plex Mono", monospace;
     font-size:12px;
     letter-spacing:.03em;
-    color:var(--red-ink);
-    background:var(--red);
     border:none;
     border-radius:6px;
     padding:9px 20px;
     cursor:pointer;
     font-weight:600;
   }
+  #playAgainBtn{ color:var(--red-ink); background:var(--red); }
   #playAgainBtn:hover{ filter:brightness(1.08); }
   #playAgainBtn:focus-visible{ outline:2px solid var(--ink); outline-offset:2px; }
+  #toTitleBtn{ color:var(--ink); background:var(--panel-2); border:1px solid var(--line); }
+  #toTitleBtn:hover{ filter:brightness(1.15); }
+  #toTitleBtn:focus-visible{ outline:2px solid var(--ink); outline-offset:2px; }
+
+  /* ---- title screen ---- */
+
+  .title-screen{
+    position:absolute;
+    inset:0;
+    background-image:url("assets/parjump-hero.jpg");
+    background-size:cover;
+    background-position:center;
+    display:flex;
+    flex-direction:column;
+  }
+
+  .title-scrim{
+    position:absolute;
+    inset:0;
+    background:linear-gradient(180deg, rgba(10,8,26,.1) 0%, rgba(10,8,26,.3) 55%, rgba(10,8,26,.88) 100%);
+  }
+
+  .title-inner{
+    position:relative;
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    padding:14px 16px 16px;
+  }
+
+  .game-logo{
+    margin:0;
+    font-family:"Press Start 2P", monospace;
+    font-size:clamp(18px, 5.5vw, 26px);
+    color:#fff;
+    text-shadow:2px 2px 0 rgba(0,0,0,.6), 0 0 20px rgba(240,185,78,.7);
+    line-height:1.4;
+  }
+
+  .title-bottom{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+
+  .hiscore{
+    display:flex;
+    flex-direction:column;
+    gap:1px;
+    font-family:"IBM Plex Mono", monospace;
+    background:rgba(10,8,26,.55);
+    border:1px solid rgba(255,255,255,.14);
+    padding:6px 10px;
+    border-radius:8px;
+  }
+  .hiscore-label{ font-size:9px; letter-spacing:.1em; color:var(--ink-dim); text-transform:uppercase; }
+  .hiscore-value{ font-size:15px; font-weight:600; color:#fff; font-variant-numeric:tabular-nums; }
+
+  #startBtn{
+    font-family:"Press Start 2P", monospace;
+    font-size:12px;
+    letter-spacing:.03em;
+    color:var(--red-ink);
+    background:var(--gold);
+    border:none;
+    border-radius:6px;
+    padding:12px 20px;
+    cursor:pointer;
+    box-shadow:0 4px 0 rgba(0,0,0,.35), 0 0 22px rgba(240,185,78,.5);
+  }
+  #startBtn:hover{ filter:brightness(1.08); }
+  #startBtn:active{ transform:translateY(2px); box-shadow:0 2px 0 rgba(0,0,0,.35); }
+  #startBtn:focus-visible{ outline:2px solid #fff; outline-offset:2px; }
 
   .stage-foot{
     margin-top:10px;
@@ -422,7 +515,7 @@
 
   <header class="page-head">
     <span class="kicker">Auto-runner · vanilla HTML5 canvas</span>
-    <h1>JUMP FOUNDRY</h1>
+    <h1>PARJUMP</h1>
     <p class="lede">Your hero now runs to the right on its own — the world scrolls beneath its feet. Time your jumps over stone platforms, grab mushrooms to grow, stomp the grumps roaming the path from above, and reach the flag at the end to clear the level.</p>
   </header>
 
@@ -430,7 +523,7 @@
 
     <div class="stage-frame">
       <div class="marquee">
-        <span class="marquee-title">JUMP FOUNDRY</span>
+        <span class="marquee-title">PARJUMP</span>
         <span class="marquee-lights"><span></span><span></span><span></span></span>
       </div>
 
@@ -446,7 +539,21 @@
               <div><span id="finalMush">0</span><small>mushrooms</small></div>
               <div><span id="finalKO">0</span><small>stomps</small></div>
             </div>
-            <button id="playAgainBtn" type="button">Play Again</button>
+            <p class="win-new-best" id="newBest" hidden>★ New high score ★</p>
+            <div class="win-actions">
+              <button id="playAgainBtn" type="button">Play Again</button>
+              <button id="toTitleBtn" type="button">Title Screen</button>
+            </div>
+          </div>
+        </div>
+        <div class="title-screen" id="titleScreen">
+          <div class="title-scrim"></div>
+          <div class="title-inner">
+            <h2 class="game-logo">PARJUMP</h2>
+            <div class="title-bottom">
+              <div class="hiscore"><span class="hiscore-label">High score</span><span class="hiscore-value" id="hiscoreValue">0M</span></div>
+              <button id="startBtn" type="button">▶ Start</button>
+            </div>
           </div>
         </div>
       </div>
@@ -553,16 +660,58 @@
   var canvasEl = canvas;
   var hero, cameraX, mushroomCount, defeatedCount, platforms, mushrooms, enemies, particles;
   var nextSpawnX, keys, jumpPrev, runSpeed, heroScaleCur, squash, wasOnGround;
-  var gameWon, winTimer;
+  var gameWon, winTimer, running = false;
   var t = 0, lastTime = null;
 
   var hint = document.getElementById("playHint");
   var winBanner = document.getElementById("winBanner");
   var playAgainBtn = document.getElementById("playAgainBtn");
+  var toTitleBtn = document.getElementById("toTitleBtn");
+  var newBestEl = document.getElementById("newBest");
+  var titleScreen = document.getElementById("titleScreen");
+  var startBtn = document.getElementById("startBtn");
+  var hiscoreValueEl = document.getElementById("hiscoreValue");
+
+  var HS_KEY = "parjumpHighScore";
+
+  function getHighScore(){
+    var v = parseInt(localStorage.getItem(HS_KEY) || "0", 10);
+    return isNaN(v) ? 0 : v;
+  }
+  function refreshHighScoreDisplay(){
+    hiscoreValueEl.textContent = getHighScore() + "M";
+  }
+  function maybeSetHighScore(distM){
+    var cur = getHighScore();
+    if (distM > cur){
+      localStorage.setItem(HS_KEY, String(distM));
+      refreshHighScoreDisplay();
+      return true;
+    }
+    return false;
+  }
+
+  function beginPlay(){
+    titleScreen.style.display = "none";
+    resetState({});
+    running = true;
+    try { canvas.focus(); } catch(err){ /* click handler covers hosts that block auto-focus */ }
+    requestAnimationFrame(frame);
+  }
+  function backToTitle(){
+    running = false;
+    titleScreen.style.display = "";
+    refreshHighScoreDisplay();
+  }
+
+  startBtn.addEventListener("click", beginPlay);
+  toTitleBtn.addEventListener("click", backToTitle);
 
   playAgainBtn.addEventListener("click", function(){
     resetState({});
+    running = true;
     canvas.focus();
+    requestAnimationFrame(frame);
   });
 
   canvas.addEventListener("keydown", function(e){
@@ -1043,6 +1192,7 @@
   }
 
   function frame(now){
+    if (!running) return;
     if (lastTime === null) lastTime = now;
     var dt = Math.min(0.05, (now - lastTime) / 1000);
     lastTime = now;
@@ -1053,9 +1203,12 @@
   }
 
   function showWinBanner(){
-    document.getElementById("finalDist").textContent = Math.floor(cameraX / 10) + "M";
+    var distM = Math.floor(cameraX / 10);
+    document.getElementById("finalDist").textContent = distM + "M";
     document.getElementById("finalMush").textContent = String(mushroomCount);
     document.getElementById("finalKO").textContent = String(defeatedCount);
+    var isNewBest = maybeSetHighScore(distM);
+    newBestEl.hidden = !isNewBest;
     winBanner.hidden = false;
   }
 
@@ -1086,21 +1239,21 @@
     lastTime = null;
   }
 
-  function start(data){
-    resetState(data);
-    requestAnimationFrame(frame);
+  function boot(){
+    resetState({});
+    refreshHighScoreDisplay();
   }
 
   if (window.claude && window.claude.hot && window.claude.hot.snapshot){
     window.claude.hot.snapshot(function(){
-      return { cameraX: cameraX, mushroomCount: mushroomCount, defeatedCount: defeatedCount, big: hero.big, heroY: hero.y };
+      return hero ? { cameraX: cameraX, mushroomCount: mushroomCount, defeatedCount: defeatedCount, big: hero.big, heroY: hero.y } : {};
     });
   }
 
   if (window.claude && window.claude.hot && window.claude.hot.ready){
-    window.claude.hot.ready(start);
+    window.claude.hot.ready(boot);
   } else {
-    start((window.claude && window.claude.hot && window.claude.hot.data) || {});
+    boot();
   }
 })();
 </script>
