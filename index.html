@@ -795,6 +795,15 @@
     audioCtx = new Ctx();
     return audioCtx;
   }
+  // Strict mobile browsers (iOS Safari in particular) only allow an AudioContext
+  // to be created/resumed synchronously inside a real user-gesture handler, not
+  // from a later requestAnimationFrame tick — so every gesture that can be the
+  // player's first interaction (Start, canvas click/keydown, touch buttons) calls
+  // this directly, rather than relying solely on the resume() inside playSfx().
+  function unlockAudio(){
+    var ac = getAudioCtx();
+    if (ac && ac.state === "suspended") ac.resume().catch(function(){});
+  }
   function tone(ac, t0, freq0, freq1, dur, type, gain){
     var osc = ac.createOscillator();
     var g = ac.createGain();
@@ -874,11 +883,10 @@
     titleScreen.style.display = "none";
     resetState({});
     running = true;
-    lastTime = null;
     touchControls.hidden = !touchCapable;
     try { canvas.focus(); } catch(err){ /* click handler covers hosts that block auto-focus */ }
     announce("Run started. Jump the platforms, grab mushrooms, stomp grumps, reach the flag.");
-    requestAnimationFrame(frame);
+    startGameLoop();
   }
   function backToTitle(){
     running = false;
@@ -887,31 +895,34 @@
     refreshHighScoreDisplay();
     resetState({});
     titleRunning = true;
-    lastTime = null;
-    requestAnimationFrame(titleFrame);
+    startTitleLoop();
   }
   function playAgain(){
     resetState({});
     running = true;
-    lastTime = null;
     touchControls.hidden = !touchCapable;
     canvas.focus();
     announce("Run started. Jump the platforms, grab mushrooms, stomp grumps, reach the flag.");
-    requestAnimationFrame(frame);
+    startGameLoop();
   }
 
-  startBtn.addEventListener("click", beginPlay);
+  startBtn.addEventListener("click", function(){ unlockAudio(); beginPlay(); });
   toTitleBtn.addEventListener("click", backToTitle);
   overToTitleBtn.addEventListener("click", backToTitle);
   playAgainBtn.addEventListener("click", playAgain);
   overPlayAgainBtn.addEventListener("click", playAgain);
 
-  // Bound to window (not the canvas) so a key held while focus moves elsewhere still
-  // reaches its keyup — otherwise a movement key could get stuck "on" forever.
-  window.addEventListener("keydown", function(e){
+  // keydown still requires the canvas to be focused first (same "click to control"
+  // contract as before — so arrow keys don't scroll the page or move the hero
+  // before the player has engaged with the stage). keyup is bound to window and
+  // left ungated so a key release always registers even if focus moved away in
+  // the meantime — that mismatch (keydown only via canvas, keyup only via canvas
+  // too) was the original stuck-key bug; keyup no longer depends on focus at all.
+  canvas.addEventListener("keydown", function(e){
     var k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     keys[k] = true;
-    if ([" ", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].indexOf(e.key) !== -1 && document.activeElement === canvas){
+    unlockAudio();
+    if ([" ", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].indexOf(e.key) !== -1){
       e.preventDefault();
     }
   });
@@ -927,7 +938,7 @@
     if (document.hidden) keys = {};
   });
 
-  canvas.addEventListener("click", function(){ canvas.focus(); });
+  canvas.addEventListener("click", function(){ canvas.focus(); unlockAudio(); });
   canvas.addEventListener("focus", function(){ hint.classList.add("hidden"); });
   canvas.addEventListener("blur", function(){ hint.classList.remove("hidden"); });
   try { canvas.focus(); } catch(err){ /* click handler covers hosts that block auto-focus */ }
@@ -938,7 +949,7 @@
     touchLeft = left; touchRight = right; touchJump = jump;
   }
   function bindHold(el, onDown, onUp){
-    el.addEventListener("pointerdown", function(e){ e.preventDefault(); el.classList.add("active"); onDown(); canvas.focus(); }, { passive: false });
+    el.addEventListener("pointerdown", function(e){ e.preventDefault(); el.classList.add("active"); onDown(); canvas.focus(); unlockAudio(); }, { passive: false });
     ["pointerup", "pointercancel", "pointerleave"].forEach(function(evt){
       el.addEventListener(evt, function(){ el.classList.remove("active"); onUp(); });
     });
@@ -946,7 +957,14 @@
   bindHold(touchLeftBtn, function(){ touchLeft = true; }, function(){ touchLeft = false; });
   bindHold(touchRightBtn, function(){ touchRight = true; }, function(){ touchRight = false; });
   bindHold(touchJumpBtn, function(){ touchJump = true; }, function(){ touchJump = false; });
-  var touchCapable = !!(window.matchMedia && window.matchMedia("(hover: none) and (pointer: coarse)").matches);
+  var touchMQ = window.matchMedia ? window.matchMedia("(hover: none) and (pointer: coarse)") : null;
+  var touchCapable = !!(touchMQ && touchMQ.matches);
+  if (touchMQ && touchMQ.addEventListener){
+    touchMQ.addEventListener("change", function(e){
+      touchCapable = e.matches;
+      if (running && winBanner.hidden && overBanner.hidden) touchControls.hidden = !touchCapable;
+    });
+  }
 
   function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
   function mod(a, n){ return ((a % n) + n) % n; }
@@ -1150,7 +1168,7 @@
     enemies = enemies.filter(function(en){ return !en.dead && en.maxX + 20 > cameraX - 60; });
 
     var flagScreenX = FLAG_X - cameraX;
-    if (flagScreenX <= HERO_X + 6){
+    if (!gameOver && flagScreenX <= HERO_X + 6){
       gameWon = true;
       winTimer = 1.0;
       hero.vy = -180;
@@ -1460,33 +1478,51 @@
     if (showHud) drawHUD();
   }
 
-  function frame(now){
-    if (!running) return;
-    if (lastTime === null) lastTime = now;
-    var dt = Math.min(0.05, (now - lastTime) / 1000);
-    lastTime = now;
-    t += dt;
-    update(dt);
-    render(true);
-    requestAnimationFrame(frame);
+  // Each of these starts a fresh rAF chain tagged with a generation number. If
+  // one of the start-a-run functions below fires twice in quick succession
+  // (e.g. a double-click on Start/Play Again before the first frame lands),
+  // the older chain's `myGen` no longer matches the shared `loopGen` counter
+  // on its next tick, so it quietly stops rescheduling itself instead of
+  // running alongside the new one and double-stepping physics every frame.
+  var loopGen = 0;
+
+  function startGameLoop(){
+    var myGen = ++loopGen;
+    lastTime = null;
+    function tick(now){
+      if (myGen !== loopGen || !running) return;
+      if (lastTime === null) lastTime = now;
+      var dt = Math.min(0.05, (now - lastTime) / 1000);
+      lastTime = now;
+      t += dt;
+      update(dt);
+      render(true);
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
   }
 
   // Attract-mode loop for the title screen: reuses the real renderer (same art,
   // no separate promo image needed) with a slow idle hero and drifting parallax.
-  function titleFrame(now){
-    if (!titleRunning) return;
-    if (lastTime === null) lastTime = now;
-    var dt = Math.min(0.05, (now - lastTime) / 1000);
-    lastTime = now;
-    t += dt;
-    cameraX += 18 * dt;
-    for (var pi = particles.length - 1; pi >= 0; pi--){
-      var pt = particles[pi];
-      pt.x += pt.vx * dt; pt.y += pt.vy * dt; pt.vy += 90 * dt; pt.life -= dt;
-      if (pt.life <= 0) particles.splice(pi, 1);
+  function startTitleLoop(){
+    var myGen = ++loopGen;
+    lastTime = null;
+    function tick(now){
+      if (myGen !== loopGen || !titleRunning) return;
+      if (lastTime === null) lastTime = now;
+      var dt = Math.min(0.05, (now - lastTime) / 1000);
+      lastTime = now;
+      t += dt;
+      cameraX += 18 * dt;
+      for (var pi = particles.length - 1; pi >= 0; pi--){
+        var pt = particles[pi];
+        pt.x += pt.vx * dt; pt.y += pt.vy * dt; pt.vy += 90 * dt; pt.life -= dt;
+        if (pt.life <= 0) particles.splice(pi, 1);
+      }
+      render(false);
+      requestAnimationFrame(tick);
     }
-    render(false);
-    requestAnimationFrame(titleFrame);
+    requestAnimationFrame(tick);
   }
 
   function showWinBanner(){
@@ -1546,7 +1582,7 @@
     resetState({});
     refreshHighScoreDisplay();
     titleRunning = true;
-    requestAnimationFrame(titleFrame);
+    startTitleLoop();
   }
 
   if (window.claude && window.claude.hot && window.claude.hot.snapshot){
