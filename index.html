@@ -757,7 +757,6 @@
   var HEARTS_MAX = 3;
   var DIFFICULTY_DIST = 3000; // world px over which the game gently ramps up to full difficulty
 
-  var canvasEl = canvas;
   var hero, cameraX, mushroomCount, defeatedCount, platforms, mushrooms, enemies, particles;
   var nextSpawnX, keys, jumpPrev, runSpeed, heroScaleCur, squash, wasOnGround;
   var gameWon, gameOver, winTimer, running = false, titleRunning = false;
@@ -854,7 +853,16 @@
     muteBtn.setAttribute("aria-pressed", muted ? "true" : "false");
     muteBtn.setAttribute("aria-label", muted ? "Unmute sound effects" : "Mute sound effects");
   }
-  muteBtn.addEventListener("click", function(){ setMuted(!muted); });
+  muteBtn.addEventListener("click", function(){
+    setMuted(!muted);
+    unlockAudio();
+    // Clicking mute steals focus from the canvas, which would otherwise blur
+    // it and silently re-show the "click to control" hint mid-run — hand
+    // focus straight back so a run in progress isn't interrupted.
+    if (running && winBanner.hidden && overBanner.hidden){
+      try { canvas.focus(); } catch(err){ /* ignore */ }
+    }
+  });
   setMuted(muted);
 
   function announce(msg){
@@ -901,16 +909,20 @@
     resetState({});
     running = true;
     touchControls.hidden = !touchCapable;
-    canvas.focus();
+    try { canvas.focus(); } catch(err){ /* click handler covers hosts that block auto-focus */ }
     announce("Run started. Jump the platforms, grab mushrooms, stomp grumps, reach the flag.");
     startGameLoop();
   }
 
+  // unlockAudio() on every one of these: each is a real candidate for the
+  // player's *next* gesture after some idle time (backgrounding a tab can
+  // auto-suspend the AudioContext), so each needs its own synchronous unlock
+  // rather than relying only on the very first click of the session.
   startBtn.addEventListener("click", function(){ unlockAudio(); beginPlay(); });
-  toTitleBtn.addEventListener("click", backToTitle);
-  overToTitleBtn.addEventListener("click", backToTitle);
-  playAgainBtn.addEventListener("click", playAgain);
-  overPlayAgainBtn.addEventListener("click", playAgain);
+  toTitleBtn.addEventListener("click", function(){ unlockAudio(); backToTitle(); });
+  overToTitleBtn.addEventListener("click", function(){ unlockAudio(); backToTitle(); });
+  playAgainBtn.addEventListener("click", function(){ unlockAudio(); playAgain(); });
+  overPlayAgainBtn.addEventListener("click", function(){ unlockAudio(); playAgain(); });
 
   // keydown still requires the canvas to be focused first (same "click to control"
   // contract as before — so arrow keys don't scroll the page or move the hero
