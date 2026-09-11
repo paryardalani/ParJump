@@ -886,9 +886,14 @@
     return false;
   }
 
-  function beginPlay(){
-    titleRunning = false;
-    titleScreen.style.display = "none";
+  // Shared by the Start button and both Play Again buttons — the only
+  // difference between "first run from the title screen" and "another run
+  // right after one ended" is whether the title screen needs to be torn down.
+  function startRun(fromTitle){
+    if (fromTitle){
+      titleRunning = false;
+      titleScreen.style.display = "none";
+    }
     resetState({});
     running = true;
     touchControls.hidden = !touchCapable;
@@ -896,6 +901,8 @@
     announce("Run started. Jump the platforms, grab mushrooms, stomp grumps, reach the flag.");
     startGameLoop();
   }
+  function beginPlay(){ startRun(true); }
+  function playAgain(){ startRun(false); }
   function backToTitle(){
     running = false;
     titleScreen.style.display = "";
@@ -905,15 +912,6 @@
     titleRunning = true;
     startTitleLoop();
   }
-  function playAgain(){
-    resetState({});
-    running = true;
-    touchControls.hidden = !touchCapable;
-    try { canvas.focus(); } catch(err){ /* click handler covers hosts that block auto-focus */ }
-    announce("Run started. Jump the platforms, grab mushrooms, stomp grumps, reach the flag.");
-    startGameLoop();
-  }
-
   // unlockAudio() on every one of these: each is a real candidate for the
   // player's *next* gesture after some idle time (backgrounding a tab can
   // auto-suspend the AudioContext), so each needs its own synchronous unlock
@@ -1101,8 +1099,8 @@
     if (ended){
       winTimer -= dt;
       if (winTimer <= 0){
-        if (gameWon && winBanner.hidden) showWinBanner();
-        if (gameOver && overBanner.hidden) showOverBanner();
+        if (gameWon && winBanner.hidden) showEndBanner(winBanner, "final", newBestEl);
+        if (gameOver && overBanner.hidden) showEndBanner(overBanner, "over", overNewBestEl);
       }
       for (var pi2 = particles.length - 1; pi2 >= 0; pi2--){
         var pt2 = particles[pi2];
@@ -1537,25 +1535,16 @@
     requestAnimationFrame(tick);
   }
 
-  function showWinBanner(){
+  // Win and game-over share one end-of-run banner shape (distance/mushrooms/
+  // stomps + a possible new-high-score line); this fills in whichever pair of
+  // DOM elements the outcome calls for instead of two near-identical copies.
+  function showEndBanner(banner, idPrefix, bestEl){
     var distM = Math.floor(cameraX / 10);
-    document.getElementById("finalDist").textContent = distM + "M";
-    document.getElementById("finalMush").textContent = String(mushroomCount);
-    document.getElementById("finalKO").textContent = String(defeatedCount);
-    var isNewBest = maybeSetHighScore(distM);
-    newBestEl.hidden = !isNewBest;
-    winBanner.hidden = false;
-    touchControls.hidden = true;
-  }
-
-  function showOverBanner(){
-    var distM = Math.floor(cameraX / 10);
-    document.getElementById("overDist").textContent = distM + "M";
-    document.getElementById("overMush").textContent = String(mushroomCount);
-    document.getElementById("overKO").textContent = String(defeatedCount);
-    var isNewBest = maybeSetHighScore(distM);
-    overNewBestEl.hidden = !isNewBest;
-    overBanner.hidden = false;
+    document.getElementById(idPrefix + "Dist").textContent = distM + "M";
+    document.getElementById(idPrefix + "Mush").textContent = String(mushroomCount);
+    document.getElementById(idPrefix + "KO").textContent = String(defeatedCount);
+    bestEl.hidden = !maybeSetHighScore(distM);
+    banner.hidden = false;
     touchControls.hidden = true;
   }
 
