@@ -674,6 +674,24 @@
 
   var HS_KEY = "parjumpHighScore";
 
+  var SFX_NAMES = ["jump", "land", "stomp", "hurt", "mushroom", "win"];
+  var sfx = {};
+  SFX_NAMES.forEach(function(name){
+    var a = new Audio("assets/sfx/" + name + ".mp3");
+    a.preload = "auto";
+    a.volume = 0.55;
+    sfx[name] = a;
+  });
+  function playSfx(name){
+    var base = sfx[name];
+    if (!base) return;
+    try {
+      var el = base.cloneNode(true);
+      el.volume = base.volume;
+      el.play().catch(function(){ /* blocked or missing until generated */ });
+    } catch(err){ /* audio unsupported, ignore */ }
+  }
+
   function getHighScore(){
     var v = parseInt(localStorage.getItem(HS_KEY) || "0", 10);
     return isNaN(v) ? 0 : v;
@@ -791,6 +809,7 @@
     if (jumpNow && !jumpPrev && hero.onGround){
       hero.vy = JUMP_V;
       hero.onGround = false;
+      playSfx("jump");
     }
     jumpPrev = jumpNow;
 
@@ -823,7 +842,10 @@
     }
     hero.onGround = landed;
 
-    if (!wasOnGround && hero.onGround) squash = 1;
+    if (!wasOnGround && hero.onGround){
+      squash = 1;
+      playSfx("land");
+    }
     wasOnGround = hero.onGround;
     squash = Math.max(0, squash - dt * 5);
 
@@ -871,10 +893,12 @@
           hero.onGround = false;
           hero.y = eTop - HERO_H;
           spawnParticles(esx + 8, eTop + 6, COL.enemyBody);
+          playSfx("stomp");
         } else if (hero.invuln <= 0){
           if (hero.big){ hero.big = false; }
           hero.invuln = HIT_INVULN;
           spawnParticles(HERO_X + HERO_W / 2, hero.y + HERO_H / 2, COL.trim);
+          playSfx("hurt");
         }
       }
     }
@@ -889,6 +913,7 @@
         mushroomCount++;
         if (!hero.big) hero.big = true;
         spawnParticles(msx + 8, mu.y + 6, mu.variant === 0 ? COL.trim : COL.grass);
+        playSfx("mushroom");
       }
     }
 
@@ -904,6 +929,7 @@
       hero.onGround = false;
       spawnParticles(HERO_X + HERO_W / 2, hero.y + HERO_H / 2, COL.trim);
       spawnParticles(HERO_X + HERO_W / 2, hero.y + HERO_H / 2, COL.grass);
+      playSfx("win");
     }
 
     for (var pi = particles.length - 1; pi >= 0; pi--){
