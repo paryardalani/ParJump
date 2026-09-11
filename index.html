@@ -1,4 +1,5 @@
 <title>ParJump</title>
+<meta charset="utf-8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -192,8 +193,9 @@
     border-radius:10px;
     padding:20px 24px;
     text-align:center;
-    max-width:280px;
+    max-width:320px;
   }
+  .gameover-card{ border-color:var(--gray); }
   .win-card h2{
     margin:0 0 14px;
     font-family:"Press Start 2P", monospace;
@@ -205,7 +207,8 @@
   .win-stats{
     display:flex;
     justify-content:center;
-    gap:16px;
+    gap:12px;
+    flex-wrap:wrap;
     margin-bottom:18px;
   }
   .win-stats > div{ display:flex; flex-direction:column; align-items:center; gap:3px; }
@@ -239,7 +242,7 @@
     flex-wrap:wrap;
   }
 
-  #playAgainBtn, #toTitleBtn{
+  .btn-primary, .btn-secondary{
     font-family:"IBM Plex Mono", monospace;
     font-size:12px;
     letter-spacing:.03em;
@@ -249,12 +252,12 @@
     cursor:pointer;
     font-weight:600;
   }
-  #playAgainBtn{ color:var(--red-ink); background:var(--red); }
-  #playAgainBtn:hover{ filter:brightness(1.08); }
-  #playAgainBtn:focus-visible{ outline:2px solid var(--ink); outline-offset:2px; }
-  #toTitleBtn{ color:var(--ink); background:var(--panel-2); border:1px solid var(--line); }
-  #toTitleBtn:hover{ filter:brightness(1.15); }
-  #toTitleBtn:focus-visible{ outline:2px solid var(--ink); outline-offset:2px; }
+  .btn-primary{ color:var(--red-ink); background:var(--red); }
+  .btn-primary:hover{ filter:brightness(1.08); }
+  .btn-primary:focus-visible{ outline:2px solid var(--ink); outline-offset:2px; }
+  .btn-secondary{ color:var(--ink); background:var(--panel-2); border:1px solid var(--line); }
+  .btn-secondary:hover{ filter:brightness(1.15); }
+  .btn-secondary:focus-visible{ outline:2px solid var(--ink); outline-offset:2px; }
 
   /* ---- title screen ---- */
 
@@ -516,7 +519,7 @@
   <header class="page-head">
     <span class="kicker">Auto-runner · vanilla HTML5 canvas</span>
     <h1>PARJUMP</h1>
-    <p class="lede">Your hero now runs to the right on its own — the world scrolls beneath its feet. Time your jumps over stone platforms, grab mushrooms to grow, stomp the grumps roaming the path from above, and reach the flag at the end to clear the level.</p>
+    <p class="lede">Your hero now runs to the right on its own — the world scrolls beneath its feet. Time your jumps over stone platforms, grab mushrooms to grow (or a green one for an extra life), collect coin arcs along the way, and stomp the grumps roaming the path. Get hit twice while small and it's game over — reach the flag first to clear the level.</p>
   </header>
 
   <div class="cabinet">
@@ -536,13 +539,30 @@
             <h2>LEVEL CLEAR</h2>
             <div class="win-stats">
               <div><span id="finalDist">0M</span><small>distance</small></div>
+              <div><span id="finalCoins">0</span><small>coins</small></div>
               <div><span id="finalMush">0</span><small>mushrooms</small></div>
               <div><span id="finalKO">0</span><small>stomps</small></div>
             </div>
             <p class="win-new-best" id="newBest" hidden>★ New high score ★</p>
             <div class="win-actions">
-              <button id="playAgainBtn" type="button">Play Again</button>
-              <button id="toTitleBtn" type="button">Title Screen</button>
+              <button id="playAgainBtn" class="btn-primary" type="button">Play Again</button>
+              <button id="toTitleBtn" class="btn-secondary" type="button">Title Screen</button>
+            </div>
+          </div>
+        </div>
+        <div class="win-banner" id="gameOverBanner" hidden>
+          <div class="win-card gameover-card">
+            <h2>GAME OVER</h2>
+            <div class="win-stats">
+              <div><span id="goFinalDist">0M</span><small>distance</small></div>
+              <div><span id="goFinalCoins">0</span><small>coins</small></div>
+              <div><span id="goFinalMush">0</span><small>mushrooms</small></div>
+              <div><span id="goFinalKO">0</span><small>stomps</small></div>
+            </div>
+            <p class="win-new-best" id="goNewBest" hidden>★ New high score ★</p>
+            <div class="win-actions">
+              <button id="retryBtn" class="btn-primary" type="button">Retry</button>
+              <button id="toTitleBtn2" class="btn-secondary" type="button">Title Screen</button>
             </div>
           </div>
         </div>
@@ -560,16 +580,16 @@
 
       <div class="stage-foot">
         <span class="chip">400 × 240 logical px</span>
-        <span class="chip">Step 7 of 7 — Reach the Flag</span>
+        <span class="chip">Step 8 of 8 — Coins &amp; Second Wind</span>
       </div>
     </div>
 
     <div class="side">
 
       <div class="panel">
-        <h2>Step 7 / 7</h2>
-        <h3>Reach the Flag</h3>
-        <p>The level now has an end: a flagpole waiting down the road. New obstacles stop generating as you get close, so you get a clear final stretch. Touch the flag and the run stops, your stats pop up, and you can jump straight back in.</p>
+        <h2>Step 8 / 8</h2>
+        <h3>Coins &amp; Second Wind</h3>
+        <p>Coins now scatter in Mario-style arcs above the road — collect 100 and you bank a bonus life. Green mushrooms are a straight 1-up, while the classic mushroom still lets you grow and shrug off one hit. Get caught twice while small, though, and the run ends: a GAME OVER screen shows your stats so you can jump straight back in.</p>
       </div>
 
       <div class="panel">
@@ -587,8 +607,9 @@
         <ul class="engine-notes">
           <li><b>Camera:</b> the hero's screen position never moves — a scrolling <code>cameraX</code> slides the world past it instead</li>
           <li><b>Parallax:</b> far mountains, mid hills, and near hills scroll at different speeds for depth</li>
-          <li><b>Spawning:</b> platforms, mushrooms, and grumps generate just ahead of the camera and are cleared once they scroll off-screen</li>
-          <li><b>Stomp check:</b> landing on a grump from above defeats it; touching it any other way costs your growth and a moment of invincibility</li>
+          <li><b>Spawning:</b> platforms, mushrooms, coins, and grumps generate just ahead of the camera and are cleared once they scroll off-screen</li>
+          <li><b>Stomp check:</b> landing on a grump from above defeats it; touching it any other way costs your growth (if big) or a life (if small), plus a moment of invincibility</li>
+          <li><b>Coins &amp; lives:</b> collect 100 coins for a bonus life, or grab a green 1-up mushroom outright — lose your second life while small and it's game over</li>
           <li><b>Win state:</b> reaching the flag freezes the world, plays a short celebration, then shows your run's stats — no page reload needed to try again</li>
         </ul>
       </div>
@@ -603,12 +624,13 @@
           <li class="done"><span class="n">✓</span><span class="t">Trouble Ahead — a patrolling enemy<span class="status">✓ done</span></span></li>
           <li class="done"><span class="n">✓</span><span class="t">The Stomp — taking hits, defeating enemies<span class="status">✓ done</span></span></li>
           <li class="done"><span class="n">✓</span><span class="t">Reach the Flag — a goal and a win state<span class="status">✓ done</span></span></li>
+          <li class="done"><span class="n">✓</span><span class="t">Coins &amp; Second Wind — coin arcs, 1-ups, and a two-hit game over<span class="status">✓ done</span></span></li>
         </ol>
       </div>
 
       <div class="panel">
         <h2>Beyond the tutorial</h2>
-        <p>The roadmap is complete — this is a full, replayable mini-platformer. If you want to keep going, some natural next additions: a lives/health system, a second level with a harder layout, sound effects, or swapping the hand-drawn shapes for real sprite art.</p>
+        <p>The roadmap now covers a full, replayable mini-platformer with a Mario-style economy: coins, 1-up mushrooms, and a two-strike game over. If you want to keep going, some natural next additions: a second level with a harder layout, sound effects, a boss encounter, or swapping the hand-drawn shapes for real sprite art.</p>
       </div>
 
     </div>
@@ -650,12 +672,16 @@
     body: "#3a63d8", belt: "#f0b94e", cap: "#e0392c", capBrim: "#a82a20",
     boot: "#5c3a1e", trimGreen: "#e0392c", skin: "#ffd9a0", eye: "#1c1832",
     hair: "#171310",
-    enemyBody: "#8a5a2b", enemyBelly: "#f0e0c0"
+    enemyBody: "#8a5a2b", enemyBelly: "#f0e0c0",
+    gold: "#f0b94e", goldDark: "#c9922f"
   };
 
   var STOMP_BOUNCE = -230;
   var HIT_INVULN = 1.1;
   var FLAG_X = 4000;
+  var STARTING_LIVES = 2;
+  var MAX_LIVES = 5;
+  var COIN_LIFE_MILESTONE = 100;
 
   var bgImg = new Image();
   var bgReady = false;
@@ -663,23 +689,27 @@
   bgImg.src = "assets/parjump-bg.jpg";
 
   var canvasEl = canvas;
-  var hero, cameraX, mushroomCount, defeatedCount, platforms, mushrooms, enemies, particles;
+  var hero, cameraX, mushroomCount, defeatedCount, coinCount, platforms, mushrooms, coins, enemies, particles;
   var nextSpawnX, keys, jumpPrev, runSpeed, heroScaleCur, squash, wasOnGround;
-  var gameWon, winTimer, running = false;
+  var gameWon, winTimer, gameOver, gameOverTimer, running = false;
   var t = 0, lastTime = null;
 
   var hint = document.getElementById("playHint");
   var winBanner = document.getElementById("winBanner");
+  var gameOverBanner = document.getElementById("gameOverBanner");
   var playAgainBtn = document.getElementById("playAgainBtn");
+  var retryBtn = document.getElementById("retryBtn");
   var toTitleBtn = document.getElementById("toTitleBtn");
+  var toTitleBtn2 = document.getElementById("toTitleBtn2");
   var newBestEl = document.getElementById("newBest");
+  var goNewBestEl = document.getElementById("goNewBest");
   var titleScreen = document.getElementById("titleScreen");
   var startBtn = document.getElementById("startBtn");
   var hiscoreValueEl = document.getElementById("hiscoreValue");
 
   var HS_KEY = "parjumpHighScore";
 
-  var SFX_NAMES = ["jump", "land", "stomp", "hurt", "mushroom", "win"];
+  var SFX_NAMES = ["jump", "land", "stomp", "hurt", "mushroom", "coin", "win"];
   var sfx = {};
   SFX_NAMES.forEach(function(name){
     var a = new Audio("assets/sfx/" + name + ".mp3");
@@ -726,16 +756,18 @@
     titleScreen.style.display = "";
     refreshHighScoreDisplay();
   }
-
-  startBtn.addEventListener("click", beginPlay);
-  toTitleBtn.addEventListener("click", backToTitle);
-
-  playAgainBtn.addEventListener("click", function(){
+  function startRun(){
     resetState({});
     running = true;
     canvas.focus();
     requestAnimationFrame(frame);
-  });
+  }
+
+  startBtn.addEventListener("click", beginPlay);
+  toTitleBtn.addEventListener("click", backToTitle);
+  toTitleBtn2.addEventListener("click", backToTitle);
+  playAgainBtn.addEventListener("click", startRun);
+  retryBtn.addEventListener("click", startRun);
 
   canvas.addEventListener("keydown", function(e){
     var k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
@@ -775,6 +807,15 @@
     };
   }
 
+  function spawnCoinArc(startX){
+    var count = 3 + Math.floor(Math.random() * 3);
+    var baseY = GROUND_Y - (60 + Math.random() * 40);
+    for (var i = 0; i < count; i++){
+      var arc = Math.sin((i / (count - 1)) * Math.PI) * 22;
+      coins.push({ worldX: startX + i * 14, y: baseY - arc, collected: false, spin: Math.random() * 10 });
+    }
+  }
+
   function maybeSpawn(){
     while (nextSpawnX < cameraX + W + 200 && nextSpawnX < FLAG_X - 90){
       var choice = Math.random();
@@ -784,14 +825,17 @@
         platforms.push({ worldX: nextSpawnX, y: py, w: pw });
         var onTop = Math.random();
         if (onTop < 0.35){
-          mushrooms.push({ worldX: nextSpawnX + pw / 2 - 8, y: py - 15, eaten: false, variant: Math.random() < 0.5 ? 0 : 1 });
+          mushrooms.push({ worldX: nextSpawnX + pw / 2 - 8, y: py - 15, eaten: false, variant: Math.random() < 0.8 ? 0 : 1 });
         } else if (onTop < 0.62 && pw > 55){
           enemies.push(makeEnemy(nextSpawnX + 6, nextSpawnX + pw - 22, py - 14));
         }
       } else if (choice < 0.62) {
-        mushrooms.push({ worldX: nextSpawnX + 20, y: GROUND_Y - 15, eaten: false, variant: Math.random() < 0.5 ? 0 : 1 });
+        mushrooms.push({ worldX: nextSpawnX + 20, y: GROUND_Y - 15, eaten: false, variant: Math.random() < 0.8 ? 0 : 1 });
       } else if (choice < 0.85) {
         enemies.push(makeEnemy(nextSpawnX, nextSpawnX + 55, GROUND_Y - 14));
+      }
+      if (Math.random() < 0.4){
+        spawnCoinArc(nextSpawnX + 10);
       }
       nextSpawnX += 150 + Math.random() * 90;
     }
@@ -809,7 +853,7 @@
     if (runSpeed < target) runSpeed = Math.min(target, runSpeed + SPEED_RAMP * dt);
     else if (runSpeed > target) runSpeed = Math.max(target, runSpeed - SPEED_RAMP * dt);
 
-    if (!gameWon) cameraX += runSpeed * dt;
+    if (!gameWon && !gameOver) cameraX += runSpeed * dt;
 
     if (jumpNow && !jumpPrev && hero.onGround){
       hero.vy = JUMP_V;
@@ -861,9 +905,11 @@
     var targetScale = hero.big ? 1.35 : 1;
     heroScaleCur += (targetScale - heroScaleCur) * Math.min(1, dt * 8);
 
-    if (gameWon){
-      winTimer -= dt;
-      if (winTimer <= 0 && winBanner.hidden) showWinBanner();
+    if (gameWon || gameOver){
+      if (gameWon) winTimer -= dt;
+      if (gameOver) gameOverTimer -= dt;
+      if (gameWon && winTimer <= 0 && winBanner.hidden) showWinBanner();
+      if (gameOver && gameOverTimer <= 0 && gameOverBanner.hidden) showGameOverBanner();
       for (var pi2 = particles.length - 1; pi2 >= 0; pi2--){
         var pt2 = particles[pi2];
         pt2.x += pt2.vx * dt; pt2.y += pt2.vy * dt; pt2.vy += 90 * dt; pt2.life -= dt;
@@ -900,9 +946,20 @@
           spawnParticles(esx + 8, eTop + 6, COL.enemyBody);
           playSfx("stomp");
         } else if (hero.invuln <= 0){
-          if (hero.big){ hero.big = false; }
           hero.invuln = HIT_INVULN;
-          spawnParticles(HERO_X + HERO_W / 2, hero.y + HERO_H / 2, COL.trim);
+          if (hero.big){
+            hero.big = false;
+            spawnParticles(HERO_X + HERO_W / 2, hero.y + HERO_H / 2, COL.trim);
+          } else {
+            hero.lives--;
+            spawnParticles(HERO_X + HERO_W / 2, hero.y + HERO_H / 2, COL.trim);
+            if (hero.lives <= 0){
+              gameOver = true;
+              gameOverTimer = 1.0;
+              hero.vy = -180;
+              hero.onGround = false;
+            }
+          }
           playSfx("hurt");
         }
       }
@@ -916,14 +973,37 @@
           mu.y + 14 > hero.y && mu.y < hero.y + HERO_H){
         mu.eaten = true;
         mushroomCount++;
-        if (!hero.big) hero.big = true;
-        spawnParticles(msx + 8, mu.y + 6, mu.variant === 0 ? COL.trim : COL.grass);
+        if (mu.variant === 0){
+          if (!hero.big) hero.big = true;
+          spawnParticles(msx + 8, mu.y + 6, COL.trim);
+        } else {
+          hero.lives = Math.min(MAX_LIVES, hero.lives + 1);
+          spawnParticles(msx + 8, mu.y + 6, COL.grass);
+        }
         playSfx("mushroom");
+      }
+    }
+
+    for (var c = 0; c < coins.length; c++){
+      var co = coins[c];
+      if (co.collected) continue;
+      var csx = co.worldX - cameraX;
+      if (csx + 10 > HERO_X && csx < HERO_X + HERO_W &&
+          co.y + 10 > hero.y && co.y < hero.y + HERO_H){
+        co.collected = true;
+        coinCount++;
+        spawnParticles(csx + 5, co.y + 5, COL.gold);
+        if (coinCount % COIN_LIFE_MILESTONE === 0){
+          hero.lives = Math.min(MAX_LIVES, hero.lives + 1);
+          spawnParticles(csx + 5, co.y + 5, COL.trim);
+        }
+        playSfx("coin");
       }
     }
 
     platforms = platforms.filter(function(p){ return p.worldX + p.w > cameraX - 60; });
     mushrooms = mushrooms.filter(function(mu){ return mu.worldX > cameraX - 60; });
+    coins = coins.filter(function(co){ return co.worldX > cameraX - 60; });
     enemies = enemies.filter(function(en){ return !en.dead && en.maxX + 20 > cameraX - 60; });
 
     var flagScreenX = FLAG_X - cameraX;
@@ -1074,6 +1154,22 @@
     ctx.beginPath(); ctx.arc(sx + 8, m.y + 5, 1.3, 0, Math.PI * 2); ctx.fill();
   }
 
+  function drawCoin(co){
+    if (co.collected) return;
+    var sx = co.worldX - cameraX;
+    if (sx < -20 || sx > W + 20) return;
+    var spin = Math.abs(Math.sin(t * 4 + co.spin));
+    var rx = 5 * (0.25 + spin * 0.75);
+    ctx.fillStyle = COL.goldDark;
+    ctx.beginPath();
+    ctx.ellipse(sx + 5, co.y + 5, rx, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = COL.gold;
+    ctx.beginPath();
+    ctx.ellipse(sx + 5, co.y + 4, rx * 0.65, 3.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   function drawEnemy(en){
     if (en.dead) return;
     var sx = en.worldX - cameraX;
@@ -1184,12 +1280,24 @@
     ctx.restore();
   }
 
+  function drawHeartIcon(cx, cy){
+    ctx.fillStyle = COL.trim;
+    ctx.beginPath();
+    ctx.arc(cx - 2, cy, 2.2, 0, Math.PI * 2);
+    ctx.arc(cx + 2, cy, 2.2, 0, Math.PI * 2);
+    ctx.moveTo(cx - 4, cy + 1);
+    ctx.lineTo(cx, cy + 5);
+    ctx.lineTo(cx + 4, cy + 1);
+    ctx.closePath();
+    ctx.fill();
+  }
+
   function drawHUD(){
     ctx.save();
     ctx.textBaseline = "top";
     ctx.font = "9px 'Press Start 2P', monospace";
     ctx.fillStyle = "rgba(15,12,36,0.55)";
-    ctx.fillRect(8, 8, 128, 55);
+    ctx.fillRect(8, 8, 176, 58);
 
     ctx.fillStyle = COL.sky2;
     ctx.fillText("DIST " + Math.floor(cameraX / 10) + "M", 15, 14);
@@ -1201,6 +1309,13 @@
     ctx.fillStyle = COL.sky2;
     ctx.fillText("x " + mushroomCount, 30, 27);
 
+    ctx.fillStyle = COL.goldDark;
+    ctx.beginPath(); ctx.ellipse(103, 30, 3.5, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = COL.gold;
+    ctx.beginPath(); ctx.ellipse(103, 29, 2.4, 3.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = COL.sky2;
+    ctx.fillText("x " + coinCount, 112, 27);
+
     ctx.fillStyle = COL.enemyBody;
     ctx.fillRect(15, 43, 8, 6);
     ctx.strokeStyle = COL.trim;
@@ -1209,6 +1324,15 @@
     ctx.beginPath(); ctx.moveTo(24, 41); ctx.lineTo(14, 49); ctx.stroke();
     ctx.fillStyle = COL.sky2;
     ctx.fillText("x " + defeatedCount, 30, 43);
+
+    var heartCount = Math.min(hero.lives, 5);
+    for (var hI = 0; hI < heartCount; hI++){
+      drawHeartIcon(97 + hI * 11, 45);
+    }
+    if (hero.lives > 5){
+      ctx.fillStyle = COL.sky2;
+      ctx.fillText("+" + (hero.lives - 5), 97 + 5 * 11, 43);
+    }
 
     ctx.restore();
   }
@@ -1222,6 +1346,7 @@
     drawFlag();
     for (var i = 0; i < platforms.length; i++) drawPlatform(platforms[i]);
     for (var j = 0; j < mushrooms.length; j++) drawMushroom(mushrooms[j]);
+    for (var n = 0; n < coins.length; n++) drawCoin(coins[n]);
     for (var k = 0; k < enemies.length; k++) drawEnemy(enemies[k]);
     drawHero();
     drawParticles();
@@ -1242,6 +1367,7 @@
   function showWinBanner(){
     var distM = Math.floor(cameraX / 10);
     document.getElementById("finalDist").textContent = distM + "M";
+    document.getElementById("finalCoins").textContent = String(coinCount);
     document.getElementById("finalMush").textContent = String(mushroomCount);
     document.getElementById("finalKO").textContent = String(defeatedCount);
     var isNewBest = maybeSetHighScore(distM);
@@ -1249,17 +1375,32 @@
     winBanner.hidden = false;
   }
 
+  function showGameOverBanner(){
+    var distM = Math.floor(cameraX / 10);
+    document.getElementById("goFinalDist").textContent = distM + "M";
+    document.getElementById("goFinalCoins").textContent = String(coinCount);
+    document.getElementById("goFinalMush").textContent = String(mushroomCount);
+    document.getElementById("goFinalKO").textContent = String(defeatedCount);
+    var isNewBest = maybeSetHighScore(distM);
+    goNewBestEl.hidden = !isNewBest;
+    gameOverBanner.hidden = false;
+  }
+
   function resetState(data){
     data = data || {};
     cameraX = data.cameraX || 0;
     mushroomCount = data.mushroomCount || 0;
     defeatedCount = data.defeatedCount || 0;
+    coinCount = data.coinCount || 0;
     hero = {
       y: typeof data.heroY === "number" ? data.heroY : GROUND_Y - HERO_H,
-      vy: 0, onGround: true, big: !!data.big, walkPhase: 0, invuln: 0
+      vy: 0, onGround: true, big: !!data.big,
+      lives: typeof data.lives === "number" ? data.lives : STARTING_LIVES,
+      walkPhase: 0, invuln: 0
     };
     platforms = [];
     mushrooms = [];
+    coins = [];
     enemies = [];
     particles = [];
     nextSpawnX = cameraX + 260;
@@ -1271,7 +1412,10 @@
     wasOnGround = true;
     gameWon = false;
     winTimer = 0;
+    gameOver = false;
+    gameOverTimer = 0;
     winBanner.hidden = true;
+    gameOverBanner.hidden = true;
     t = 0;
     lastTime = null;
   }
@@ -1283,7 +1427,7 @@
 
   if (window.claude && window.claude.hot && window.claude.hot.snapshot){
     window.claude.hot.snapshot(function(){
-      return hero ? { cameraX: cameraX, mushroomCount: mushroomCount, defeatedCount: defeatedCount, big: hero.big, heroY: hero.y } : {};
+      return hero ? { cameraX: cameraX, mushroomCount: mushroomCount, defeatedCount: defeatedCount, coinCount: coinCount, big: hero.big, lives: hero.lives, heroY: hero.y } : {};
     });
   }
 

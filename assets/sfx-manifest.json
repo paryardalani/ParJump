@@ -25,6 +25,11 @@
     "duration_seconds": 0.6
   },
   {
+    "id": "coin",
+    "prompt": "Short bright metallic coin collect ding sound effect, quick high-pitched chime, 8-bit platformer video game",
+    "duration_seconds": 0.3
+  },
+  {
     "id": "win",
     "prompt": "Short triumphant victory fanfare sound effect, cheerful cartoon flourish, reaching the goal in a platformer video game",
     "duration_seconds": 1.5
