@@ -366,22 +366,86 @@
 
   var HS_KEY = "parjumpHighScore";
 
-  var SFX_NAMES = ["jump", "land", "stomp", "hurt", "mushroom", "coin", "win"];
-  var sfx = {};
-  SFX_NAMES.forEach(function(name){
-    var a = new Audio("assets/sfx/" + name + ".mp3");
-    a.preload = "auto";
-    a.volume = 0.55;
-    sfx[name] = a;
-  });
+  var audioCtx = null;
+  function getAudioCtx(){
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    if (!audioCtx) audioCtx = new Ctx();
+    if (audioCtx.state === "suspended") audioCtx.resume().catch(function(){});
+    return audioCtx;
+  }
+
+  function sfxTone(ctx, t0, freq, dur, opts){
+    opts = opts || {};
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.type = opts.type || "square";
+    osc.frequency.setValueAtTime(freq, t0);
+    if (opts.sweepTo) osc.frequency.exponentialRampToValueAtTime(Math.max(1, opts.sweepTo), t0 + dur);
+    var peak = opts.gain != null ? opts.gain : 0.22;
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(peak, t0 + Math.min(0.015, dur * 0.3));
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+
+  function sfxNoise(ctx, t0, dur, opts){
+    opts = opts || {};
+    var bufferSize = Math.max(1, Math.floor(ctx.sampleRate * dur));
+    var buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    var data = buffer.getChannelData(0);
+    for (var i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    var src = ctx.createBufferSource();
+    src.buffer = buffer;
+    var filter = ctx.createBiquadFilter();
+    filter.type = opts.filterType || "lowpass";
+    filter.frequency.value = opts.filterFreq || 800;
+    var gain = ctx.createGain();
+    var peak = opts.gain != null ? opts.gain : 0.2;
+    gain.gain.setValueAtTime(peak, t0);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(filter).connect(gain).connect(ctx.destination);
+    src.start(t0);
+    src.stop(t0 + dur + 0.02);
+  }
+
+  var SFX_PLAYERS = {
+    jump: function(ctx, t0){
+      sfxTone(ctx, t0, 340, 0.14, { type: "square", sweepTo: 720, gain: 0.2 });
+    },
+    land: function(ctx, t0){
+      sfxNoise(ctx, t0, 0.08, { filterFreq: 500, gain: 0.16 });
+    },
+    stomp: function(ctx, t0){
+      sfxTone(ctx, t0, 480, 0.14, { type: "square", sweepTo: 140, gain: 0.22 });
+      sfxNoise(ctx, t0, 0.06, { filterFreq: 700, gain: 0.12 });
+    },
+    hurt: function(ctx, t0){
+      sfxTone(ctx, t0, 300, 0.28, { type: "sawtooth", sweepTo: 90, gain: 0.2 });
+    },
+    mushroom: function(ctx, t0){
+      [523.25, 659.25, 783.99, 1046.5].forEach(function(f, i){
+        sfxTone(ctx, t0 + i * 0.07, f, 0.09, { type: "sine", gain: 0.18 });
+      });
+    },
+    coin: function(ctx, t0){
+      sfxTone(ctx, t0, 988, 0.08, { type: "square", gain: 0.2 });
+      sfxTone(ctx, t0 + 0.07, 1568, 0.16, { type: "square", gain: 0.2 });
+    },
+    win: function(ctx, t0){
+      [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach(function(f, i){
+        sfxTone(ctx, t0 + i * 0.11, f, 0.16, { type: "triangle", gain: 0.2 });
+      });
+    }
+  };
+
   function playSfx(name){
-    var base = sfx[name];
-    if (!base) return;
-    try {
-      var el = base.cloneNode(true);
-      el.volume = base.volume;
-      el.play().catch(function(){ /* blocked or missing until generated */ });
-    } catch(err){ /* audio unsupported, ignore */ }
+    var ctx = getAudioCtx();
+    var player = ctx && SFX_PLAYERS[name];
+    if (!player) return;
+    try { player(ctx, ctx.currentTime); } catch(err){ /* audio unsupported, ignore */ }
   }
 
   function getHighScore(){
@@ -402,6 +466,7 @@
   }
 
   function beginPlay(){
+    getAudioCtx();
     titleScreen.style.display = "none";
     resetState({});
     running = true;
