@@ -784,8 +784,19 @@
   var HS_KEY = "parjumpHighScore";
   var MUTE_KEY = "parjumpMuted";
 
+  // localStorage can throw (not just return null) in a sandboxed iframe, a
+  // strict-privacy browser mode, or with storage disabled entirely — every
+  // read/write goes through here so the game degrades to "just don't persist"
+  // instead of failing to boot at all.
+  function storageGet(key){
+    try { return localStorage.getItem(key); } catch(err){ return null; }
+  }
+  function storageSet(key, value){
+    try { localStorage.setItem(key, value); } catch(err){ /* storage unavailable, ignore */ }
+  }
+
   // ---- audio: small WebAudio synth, no external files / network requests / CI pipeline needed ----
-  var muted = localStorage.getItem(MUTE_KEY) === "1";
+  var muted = storageGet(MUTE_KEY) === "1";
   var audioCtx = null;
   function getAudioCtx(){
     if (audioCtx) return audioCtx;
@@ -848,7 +859,7 @@
   }
   function setMuted(next){
     muted = next;
-    localStorage.setItem(MUTE_KEY, muted ? "1" : "0");
+    storageSet(MUTE_KEY, muted ? "1" : "0");
     muteBtn.textContent = muted ? "🔇" : "🔊";
     muteBtn.setAttribute("aria-pressed", muted ? "true" : "false");
     muteBtn.setAttribute("aria-label", muted ? "Unmute sound effects" : "Mute sound effects");
@@ -870,7 +881,7 @@
   }
 
   function getHighScore(){
-    var v = parseInt(localStorage.getItem(HS_KEY) || "0", 10);
+    var v = parseInt(storageGet(HS_KEY) || "0", 10);
     return isNaN(v) ? 0 : v;
   }
   function refreshHighScoreDisplay(){
@@ -879,7 +890,7 @@
   function maybeSetHighScore(distM){
     var cur = getHighScore();
     if (distM > cur){
-      localStorage.setItem(HS_KEY, String(distM));
+      storageSet(HS_KEY, String(distM));
       refreshHighScoreDisplay();
       return true;
     }
@@ -988,6 +999,19 @@
         vy: Math.sin(ang) * (40 + Math.random() * 30) - 20,
         life: 0.4, color: color
       });
+    }
+  }
+
+  // Shared by both end-of-run freezes and the title attract-mode loop, which
+  // each still animate leftover particles while everything else is paused.
+  function stepParticles(dt){
+    for (var pi = particles.length - 1; pi >= 0; pi--){
+      var pt = particles[pi];
+      pt.x += pt.vx * dt;
+      pt.y += pt.vy * dt;
+      pt.vy += 90 * dt;
+      pt.life -= dt;
+      if (pt.life <= 0) particles.splice(pi, 1);
     }
   }
 
@@ -1102,11 +1126,7 @@
         if (gameWon && winBanner.hidden) showEndBanner(winBanner, "final", newBestEl);
         if (gameOver && overBanner.hidden) showEndBanner(overBanner, "over", overNewBestEl);
       }
-      for (var pi2 = particles.length - 1; pi2 >= 0; pi2--){
-        var pt2 = particles[pi2];
-        pt2.x += pt2.vx * dt; pt2.y += pt2.vy * dt; pt2.vy += 90 * dt; pt2.life -= dt;
-        if (pt2.life <= 0) particles.splice(pi2, 1);
-      }
+      stepParticles(dt);
       return;
     }
 
@@ -1189,14 +1209,7 @@
       announce("Level clear!");
     }
 
-    for (var pi = particles.length - 1; pi >= 0; pi--){
-      var pt = particles[pi];
-      pt.x += pt.vx * dt;
-      pt.y += pt.vy * dt;
-      pt.vy += 90 * dt;
-      pt.life -= dt;
-      if (pt.life <= 0) particles.splice(pi, 1);
-    }
+    stepParticles(dt);
   }
 
   function drawSky(){
@@ -1524,11 +1537,7 @@
       lastTime = now;
       t += dt;
       cameraX += 18 * dt;
-      for (var pi = particles.length - 1; pi >= 0; pi--){
-        var pt = particles[pi];
-        pt.x += pt.vx * dt; pt.y += pt.vy * dt; pt.vy += 90 * dt; pt.life -= dt;
-        if (pt.life <= 0) particles.splice(pi, 1);
-      }
+      stepParticles(dt);
       render(false);
       requestAnimationFrame(tick);
     }
