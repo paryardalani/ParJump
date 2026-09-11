@@ -1070,7 +1070,13 @@
     var ended = gameWon || gameOver;
     if (!ended) cameraX += runSpeed * dt;
 
-    if (jumpNow && !jumpPrev && hero.onGround){
+    // The celebratory/reaction hop set by the win/game-over trigger below is
+    // still allowed to finish playing out under gravity after `ended` becomes
+    // true (that's what makes the hero land naturally instead of freezing
+    // mid-air) — but a held/pressed jump key must not be able to launch a
+    // *new* jump once the run has ended, or the player could keep bouncing
+    // the hero (and re-triggering jump SFX) behind the end-of-run banner.
+    if (jumpNow && !jumpPrev && hero.onGround && !ended){
       hero.vy = JUMP_V;
       hero.onGround = false;
       playSfx("jump");
