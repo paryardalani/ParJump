@@ -217,18 +217,44 @@
     flex-wrap:wrap;
   }
 
-  .hiscore{
+  .leaderboard{
     display:flex;
     flex-direction:column;
-    gap:1px;
+    gap:6px;
     font-family:"IBM Plex Mono", monospace;
     background:rgba(10,8,26,.55);
     border:1px solid rgba(255,255,255,.14);
-    padding:6px 10px;
+    padding:8px 10px;
     border-radius:8px;
+    min-width:150px;
   }
-  .hiscore-label{ font-size:9px; letter-spacing:.1em; color:var(--ink-dim); text-transform:uppercase; }
+  .lb-head{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .lb-title{ font-size:9px; letter-spacing:.1em; color:var(--ink-dim); text-transform:uppercase; }
   .hiscore-value{ font-size:15px; font-weight:600; color:#fff; font-variant-numeric:tabular-nums; }
+  .lb-list{
+    list-style:none;
+    margin:0;
+    padding:0;
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+  }
+  .lb-list li{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:11px;
+    color:var(--ink-dim);
+  }
+  .lb-list li .lb-rank{ color:var(--gold); width:14px; flex:none; }
+  .lb-list li .lb-dist{ color:#fff; flex:1; font-variant-numeric:tabular-nums; }
+  .lb-list li .lb-tag{ font-size:9px; letter-spacing:.05em; color:var(--ink-dim); }
+  .lb-list li.lb-empty{ color:var(--ink-dim); font-style:italic; }
 
   #startBtn{
     font-family:"Press Start 2P", monospace;
@@ -289,7 +315,13 @@
           <div class="title-inner">
             <h2 class="game-logo">PARJUMP</h2>
             <div class="title-bottom">
-              <div class="hiscore"><span class="hiscore-label">High score</span><span class="hiscore-value" id="hiscoreValue">0M</span></div>
+              <div class="leaderboard" id="leaderboard">
+                <div class="lb-head">
+                  <span class="lb-title">Top Runs</span>
+                  <span class="hiscore-value" id="hiscoreValue">0M</span>
+                </div>
+                <ol class="lb-list" id="lbList"></ol>
+              </div>
               <button id="startBtn" type="button">▶ Start</button>
             </div>
           </div>
@@ -363,8 +395,11 @@
   var titleScreen = document.getElementById("titleScreen");
   var startBtn = document.getElementById("startBtn");
   var hiscoreValueEl = document.getElementById("hiscoreValue");
+  var lbListEl = document.getElementById("lbList");
 
   var HS_KEY = "parjumpHighScore";
+  var LB_KEY = "parjumpLeaderboard";
+  var LB_MAX = 5;
 
   var SFX_NAMES = ["jump", "land", "stomp", "hurt", "mushroom", "coin", "win"];
   var sfx = {};
@@ -384,21 +419,60 @@
     } catch(err){ /* audio unsupported, ignore */ }
   }
 
+  function loadLeaderboard(){
+    try {
+      var raw = localStorage.getItem(LB_KEY);
+      var list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch(err){ return []; }
+  }
+  function saveLeaderboard(list){
+    try { localStorage.setItem(LB_KEY, JSON.stringify(list)); } catch(err){ /* storage unavailable */ }
+  }
+  function migrateLegacyHighScore(){
+    if (loadLeaderboard().length) return;
+    var legacy = parseInt(localStorage.getItem(HS_KEY) || "0", 10);
+    if (legacy > 0){
+      saveLeaderboard([{ dist: legacy, win: null, at: 0 }]);
+    }
+  }
   function getHighScore(){
-    var v = parseInt(localStorage.getItem(HS_KEY) || "0", 10);
-    return isNaN(v) ? 0 : v;
+    var list = loadLeaderboard();
+    return list.length ? list[0].dist : 0;
+  }
+  function renderLeaderboard(){
+    var list = loadLeaderboard();
+    lbListEl.innerHTML = "";
+    if (!list.length){
+      var empty = document.createElement("li");
+      empty.className = "lb-empty";
+      empty.textContent = "No runs yet";
+      lbListEl.appendChild(empty);
+      return;
+    }
+    list.slice(0, LB_MAX).forEach(function(entry, i){
+      var li = document.createElement("li");
+      var tag = entry.win === true ? "WIN" : entry.win === false ? "KO" : "—";
+      li.innerHTML =
+        "<span class=\"lb-rank\">" + (i + 1) + "</span>" +
+        "<span class=\"lb-dist\">" + entry.dist + "M</span>" +
+        "<span class=\"lb-tag\">" + tag + "</span>";
+      lbListEl.appendChild(li);
+    });
   }
   function refreshHighScoreDisplay(){
     hiscoreValueEl.textContent = getHighScore() + "M";
+    renderLeaderboard();
   }
-  function maybeSetHighScore(distM){
-    var cur = getHighScore();
-    if (distM > cur){
-      localStorage.setItem(HS_KEY, String(distM));
-      refreshHighScoreDisplay();
-      return true;
-    }
-    return false;
+  function recordRun(distM, won){
+    var prevBest = getHighScore();
+    var list = loadLeaderboard();
+    list.push({ dist: distM, win: !!won, at: Date.now() });
+    list.sort(function(a, b){ return b.dist - a.dist; });
+    list = list.slice(0, LB_MAX);
+    saveLeaderboard(list);
+    refreshHighScoreDisplay();
+    return distM > prevBest;
   }
 
   function beginPlay(){
@@ -1027,7 +1101,7 @@
     document.getElementById("finalCoins").textContent = String(coinCount);
     document.getElementById("finalMush").textContent = String(mushroomCount);
     document.getElementById("finalKO").textContent = String(defeatedCount);
-    var isNewBest = maybeSetHighScore(distM);
+    var isNewBest = recordRun(distM, true);
     newBestEl.hidden = !isNewBest;
     winBanner.hidden = false;
   }
@@ -1038,7 +1112,7 @@
     document.getElementById("goFinalCoins").textContent = String(coinCount);
     document.getElementById("goFinalMush").textContent = String(mushroomCount);
     document.getElementById("goFinalKO").textContent = String(defeatedCount);
-    var isNewBest = maybeSetHighScore(distM);
+    var isNewBest = recordRun(distM, false);
     goNewBestEl.hidden = !isNewBest;
     gameOverBanner.hidden = false;
   }
@@ -1079,6 +1153,7 @@
 
   function boot(){
     resetState({});
+    migrateLegacyHighScore();
     refreshHighScoreDisplay();
   }
 
